@@ -1,241 +1,174 @@
-import { Screen } from "@/components/screen";
-import { addMod } from "@/lib/storage";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useState } from "react";
+import {
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
+} from "react-native";
 
-
-import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Screen } from "@/components/screen";
+import { addMod } from "@/lib/storage";
 
 export default function AddModScreen() {
-    const [title, setTitle] = useState("");
-    const [cost, setCost] = useState("");
-    const [beforeUri, setBeforeUri] = useState<string | null>(null);
-    const [afterUri, setAfterUri] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [cost, setCost] = useState("");
+  const [notes, setNotes] = useState("");
+  const [beforeUri, setBeforeUri] = useState<string | null>(null);
+  const [afterUri, setAfterUri] = useState<string | null>(null);
 
-    const canSave = title.trim().length > 0;
-    const [notes, setNotes] = useState("");
-
-    return (
-        <Screen>
-            <View style={styles.headerRow}>
-                <Text style={styles.title}>Add Mod</Text>
-
-                <TouchableOpacity onPress={() => router.back()} style={styles.cancelBtn}>
-                    <Text style={styles.cancelText}>Cancel</Text>
-                </TouchableOpacity>
-            </View>
-
-            <Text style={styles.label}>Mod name</Text>
-            <TextInput
-                value={title}
-                onChangeText={setTitle}
-                placeholder="e.g. BC Racing coilovers"
-                placeholderTextColor="#777"
-                style={styles.input}
-            />
-
-            <Text style={styles.label}>Cost (£)</Text>
-            <TextInput
-                value={cost}
-                onChangeText={setCost}
-                placeholder="e.g. 850"
-                placeholderTextColor="#777"
-                keyboardType="numeric"
-                style={styles.input}
-            />
-
-            <Text style={styles.label}>Notes</Text>
-            <TextInput
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="e.g. Huge difference in turn-in"
-                placeholderTextColor="#777"
-                style={[styles.input, { height: 90, textAlignVertical: "top" }]}
-                multiline
-            />
-
-            <Text style={styles.sectionTitle}>Before / After</Text>
-
-            <View style={styles.photoRow}>
-                <View style={styles.photoCard}>
-                    <Text style={styles.photoLabel}>Before</Text>
-                    {beforeUri ? (
-                        <Image source={{ uri: beforeUri }} style={styles.photo} />
-                    ) : (
-                        <View style={styles.photoPlaceholder} />
-                    )}
-                    <TouchableOpacity
-                        style={styles.photoBtn}
-                        onPress={() => pickImage((uri) => setBeforeUri(uri))}
-
-                    >
-                        <Text style={styles.photoBtnText}>Pick photo</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.photoCard}>
-                    <Text style={styles.photoLabel}>After</Text>
-                    {afterUri ? (
-                        <Image source={{ uri: afterUri }} style={styles.photo} />
-                    ) : (
-                        <View style={styles.photoPlaceholder} />
-                    )}
-                    <TouchableOpacity
-                        style={styles.photoBtn}
-                        onPress={() => pickImage((uri) => setAfterUri(uri))}
-                    >
-                        <Text style={styles.photoBtnText}>Pick photo</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            <TouchableOpacity
-                style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
-                disabled={!canSave}
-                onPress={async () => {
-                    const parsedCost = cost.trim() ? Number(cost) : null;
-                    const safeCost = Number.isFinite(parsedCost as number) ? parsedCost : null;
-
-                    await addMod({
-                        id: String(Date.now()),
-                        title: title.trim(),
-                        cost: safeCost,
-                        dateISO: new Date().toISOString(),
-                        notes: notes.trim(),
-                        beforeUri,
-                        afterUri,
-                    });
-
-                    router.back();
-                }}
-            >
-                <Text style={styles.saveBtnText}>Save Mod</Text>
-            </TouchableOpacity>
-        </Screen>
-    );
-}
-
-async function pickImage(setter: (uri: string) => void) {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  async function pickImage(setter: (uri: string) => void) {
+    const { status } =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
 
-  const result = await ImagePicker.launchImageLibraryAsync({
-  mediaTypes: ["images"],
-  allowsEditing: true,
-  quality: 0.6,
-  base64: true,
-});
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.6,
+      base64: true,
+    });
 
     if (!result.canceled) {
-    const asset = result.assets[0];
-
-    if (asset.base64) {
-      setter(`data:image/jpeg;base64,${asset.base64}`);
-    } else {
-      setter(asset.uri);
+      const asset = result.assets[0];
+      const uri = asset.base64
+        ? `data:image/jpeg;base64,${asset.base64}`
+        : asset.uri;
+      setter(uri);
     }
   }
+
+  async function save() {
+    const parsedCost = cost.trim() ? Number(cost) : null;
+    const safeCost =
+      typeof parsedCost === "number" && Number.isFinite(parsedCost)
+        ? parsedCost
+        : null;
+
+    await addMod({
+      id: String(Date.now()),
+      title: title.trim(),
+      cost: safeCost,
+      dateISO: new Date().toISOString(),
+      notes: notes.trim(),
+      beforeUri,
+      afterUri,
+    });
+
+    router.back();
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexGrow: 1 }}
+        >
+          <Screen>
+            <Text style={styles.title}>Add Mod</Text>
+
+            <TextInput
+              placeholder="Mod name"
+              placeholderTextColor="#777"
+              value={title}
+              onChangeText={setTitle}
+              style={styles.input}
+            />
+
+            <TextInput
+              placeholder="Cost (£)"
+              placeholderTextColor="#777"
+              value={cost}
+              onChangeText={setCost}
+              keyboardType="numeric"
+              style={styles.input}
+            />
+
+            <TextInput
+              placeholder="Notes"
+              placeholderTextColor="#777"
+              value={notes}
+              onChangeText={setNotes}
+              style={[styles.input, styles.notes]}
+              multiline
+            />
+
+            <View style={styles.photoRow}>
+              <TouchableOpacity
+                style={styles.photoBox}
+                onPress={() => pickImage(setBeforeUri)}
+              >
+                {beforeUri ? (
+                  <Image source={{ uri: beforeUri }} style={styles.photo} />
+                ) : (
+                  <Text style={styles.photoText}>Add Before</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.photoBox}
+                onPress={() => pickImage(setAfterUri)}
+              >
+                {afterUri ? (
+                  <Image source={{ uri: afterUri }} style={styles.photo} />
+                ) : (
+                  <Text style={styles.photoText}>Add After</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.saveBtn} onPress={save}>
+              <Text style={styles.saveText}>Save Mod</Text>
+            </TouchableOpacity>
+          </Screen>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
+  );
 }
 
 const styles = StyleSheet.create({
-    headerRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 18,
-    },
-    title: {
-        color: "#fff",
-        fontSize: 24,
-        fontWeight: "600",
-    },
-    cancelBtn: {
-        paddingVertical: 8,
-        paddingHorizontal: 10,
-        borderRadius: 10,
-        backgroundColor: "#1a1a1a",
-    },
-    cancelText: {
-        color: "#bbb",
-        fontWeight: "600",
-    },
-    label: {
-        color: "#bbb",
-        marginBottom: 8,
-        marginTop: 10,
-    },
-    input: {
-        backgroundColor: "#1a1a1a",
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        color: "#fff",
-        borderWidth: 1,
-        borderColor: "#222",
-    },
-    sectionTitle: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "600",
-        marginTop: 18,
-        marginBottom: 10,
-    },
-    photoRow: {
-        flexDirection: "row",
-        gap: 12,
-        marginBottom: 18,
-    },
-    photoCard: {
-        flex: 1,
-        backgroundColor: "#1a1a1a",
-        borderRadius: 14,
-        padding: 12,
-        borderWidth: 1,
-        borderColor: "#222",
-    },
-    photoLabel: {
-        color: "#bbb",
-        marginBottom: 8,
-        fontWeight: "600",
-    },
-    photoPlaceholder: {
-        height: 120,
-        borderRadius: 12,
-        backgroundColor: "#111",
-        borderWidth: 1,
-        borderColor: "#2a2a2a",
-    },
-    photo: {
-        height: 120,
-        borderRadius: 12,
-    },
-    photoBtn: {
-        marginTop: 10,
-        paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: "#0f0f0f",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "#2a2a2a",
-    },
-    photoBtnText: {
-        color: "#fff",
-        fontWeight: "600",
-    },
-    saveBtn: {
-        backgroundColor: "#ff3b3b",
-        paddingVertical: 14,
-        borderRadius: 12,
-        alignItems: "center",
-        marginTop: "auto",
-    },
-    saveBtnDisabled: {
-        opacity: 0.4,
-    },
-    saveBtnText: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "700",
-    },
+  title: { color: "#fff", fontSize: 24, fontWeight: "700", marginBottom: 14 },
+  input: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+    padding: 14,
+    color: "#fff",
+    borderWidth: 1,
+    borderColor: "#222",
+    marginBottom: 10,
+  },
+  notes: { height: 90, textAlignVertical: "top" },
+  photoRow: { flexDirection: "row", gap: 12, marginVertical: 14 },
+  photoBox: {
+    flex: 1,
+    height: 120,
+    backgroundColor: "#111",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+  },
+  photo: { width: "100%", height: "100%", borderRadius: 12 },
+  photoText: { color: "#aaa", fontWeight: "600" },
+  saveBtn: {
+    backgroundColor: "#ff3b3b",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  saveText: { color: "#fff", fontWeight: "800" },
 });

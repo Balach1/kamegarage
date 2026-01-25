@@ -47,6 +47,9 @@ export default function GarageScreen() {
     return sum;
   }, [mods]);
 
+  const recentMods = useMemo(() => mods.slice(0, 5), [mods]);
+
+
   async function saveName(nextName: string) {
     const cleaned = nextName.trim() || "My Car";
     const next: CarProfile = { ...car, name: cleaned };
@@ -184,6 +187,42 @@ export default function GarageScreen() {
             <Text style={styles.statLabel}>Spent</Text>
           </View>
         </View>
+
+        <View style={styles.recentSection}>
+  <Text style={styles.sectionTitle}>Recent mods</Text>
+
+  {recentMods.length === 0 ? (
+    <Text style={styles.emptyText}>No mods yet — add your first one.</Text>
+  ) : (
+    <View style={styles.recentList}>
+      {recentMods.map((m) => (
+        <TouchableOpacity
+          key={m.id}
+          style={styles.recentItem}
+          onPress={() => router.push(`/edit-mod?id=${m.id}`)}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.recentName} numberOfLines={1}>
+            {m.title}
+          </Text>
+
+          <Text style={styles.recentMeta}>
+            {m.cost != null ? `£${m.cost}` : "£—"}
+          </Text>
+        </TouchableOpacity>
+      ))}
+
+      {mods.length > 5 ? (
+        <TouchableOpacity
+          style={styles.viewAllBtn}
+          onPress={() => router.push("/timeline")}
+        >
+          <Text style={styles.viewAllText}>View all</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  )}
+</View>
 
         <TouchableOpacity
           style={styles.button}
@@ -326,6 +365,57 @@ const styles = StyleSheet.create({
     color: "#ff3b3b",
     fontWeight: "700",
   },
+recentSection: {
+  marginTop: 6,
+  marginBottom: 14,
+},
+sectionTitle: {
+  color: "#fff",
+  fontWeight: "700",
+  marginBottom: 10,
+},
+emptyText: {
+  color: "#888",
+},
+recentList: {
+  gap: 8,
+},
+recentItem: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  backgroundColor: "#0f0f0f",
+  borderWidth: 1,
+  borderColor: "#2a2a2a",
+  paddingVertical: 10,
+  paddingHorizontal: 12,
+  borderRadius: 12,
+},
+recentName: {
+  color: "#fff",
+  fontWeight: "700",
+  flex: 1,
+  marginRight: 10,
+},
+recentMeta: {
+  color: "#bbb",
+  fontWeight: "700",
+},
+viewAllBtn: {
+  marginTop: 6,
+  alignSelf: "flex-start",
+  paddingVertical: 8,
+  paddingHorizontal: 10,
+  borderRadius: 10,
+  backgroundColor: "#0f0f0f",
+  borderWidth: 1,
+  borderColor: "#2a2a2a",
+},
+viewAllText: {
+  color: "#fff",
+  fontWeight: "800",
+  fontSize: 12,
+},
 
 
 });
