@@ -48,3 +48,4 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+"# kamegarage"  git init git add README.md git commit -m "first commit" git branch -M main git remote add origin https://github.com/Balach1/kamegarage.git git push -u origin main
