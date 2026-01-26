@@ -16,9 +16,13 @@ import { CarProfile, getCar, saveCar } from "@/lib/carStorage";
 import { getMods, ModEntry } from "@/lib/storage";
 
 export default function GarageScreen() {
+
+
   const [car, setCar] = useState<CarProfile>({
     name: "My Car",
     heroImageUri: null,
+    currentMileage: null,
+    motExpiryISO: null,
   });
 
   const [mods, setMods] = useState<ModEntry[]>([]);
@@ -48,13 +52,26 @@ export default function GarageScreen() {
   }, [mods]);
 
   const recentMods = useMemo(() => mods.slice(0, 5), [mods]);
-
+  const [isEditingMileage, setIsEditingMileage] = useState(false);
+  const [mileageDraft, setMileageDraft] = useState("");
 
   async function saveName(nextName: string) {
     const cleaned = nextName.trim() || "My Car";
     const next: CarProfile = { ...car, name: cleaned };
     setCar(next);
     setNameDraft(cleaned);
+    await saveCar(next);
+  }
+
+  async function saveMileage(nextVal: string) {
+    const trimmed = nextVal.trim();
+    const parsed = trimmed ? Number(trimmed) : null;
+    const safe =
+      typeof parsed === "number" && Number.isFinite(parsed) ? parsed : null;
+
+    const next: CarProfile = { ...car, currentMileage: safe };
+    setCar(next);
+    setMileageDraft(safe != null ? String(safe) : "");
     await saveCar(next);
   }
 
@@ -68,6 +85,9 @@ export default function GarageScreen() {
         if (!alive) return;
 
         setCar(carData);
+        setMileageDraft(
+          carData.currentMileage != null ? String(carData.currentMileage) : ""
+        );
         setNameDraft(carData.name);
         setMods(modsData);
       })();
@@ -188,41 +208,85 @@ export default function GarageScreen() {
           </View>
         </View>
 
+        <View style={styles.mileageCard}>
+          <Text style={styles.sectionTitle}>Current mileage</Text>
+
+          {isEditingMileage ? (
+            <View style={styles.mileageRow}>
+              <TextInput
+                value={mileageDraft}
+                onChangeText={setMileageDraft}
+                keyboardType="numeric"
+                placeholder="e.g. 84200"
+                placeholderTextColor="#777"
+                style={styles.mileageInput}
+                onBlur={async () => {
+                  await saveMileage(mileageDraft);
+                  setIsEditingMileage(false);
+                }}
+              />
+
+              <TouchableOpacity
+                style={styles.mileageSaveBtn}
+                onPress={async () => {
+                  await saveMileage(mileageDraft);
+                  setIsEditingMileage(false);
+                }}
+              >
+                <Text style={styles.mileageSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => setIsEditingMileage(true)}
+              activeOpacity={0.75}
+              style={styles.mileageDisplay}
+            >
+              <Text style={styles.mileageValue}>
+                {car.currentMileage != null
+                  ? `${car.currentMileage.toLocaleString()} mi`
+                  : "Tap to set mileage"}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+
         <View style={styles.recentSection}>
-  <Text style={styles.sectionTitle}>Recent mods</Text>
+          <Text style={styles.sectionTitle}>Recent mods</Text>
 
-  {recentMods.length === 0 ? (
-    <Text style={styles.emptyText}>No mods yet — add your first one.</Text>
-  ) : (
-    <View style={styles.recentList}>
-      {recentMods.map((m) => (
-        <TouchableOpacity
-          key={m.id}
-          style={styles.recentItem}
-          onPress={() => router.push(`/edit-mod?id=${m.id}`)}
-          activeOpacity={0.75}
-        >
-          <Text style={styles.recentName} numberOfLines={1}>
-            {m.title}
-          </Text>
+          {recentMods.length === 0 ? (
+            <Text style={styles.emptyText}>No mods yet — add your first one.</Text>
+          ) : (
+            <View style={styles.recentList}>
+              {recentMods.map((m) => (
+                <TouchableOpacity
+                  key={m.id}
+                  style={styles.recentItem}
+                  onPress={() => router.push(`/edit-mod?id=${m.id}`)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.recentName} numberOfLines={1}>
+                    {m.title}
+                  </Text>
 
-          <Text style={styles.recentMeta}>
-            {m.cost != null ? `£${m.cost}` : "£—"}
-          </Text>
-        </TouchableOpacity>
-      ))}
+                  <Text style={styles.recentMeta}>
+                    {m.cost != null ? `£${m.cost}` : "£—"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
 
-      {mods.length > 5 ? (
-        <TouchableOpacity
-          style={styles.viewAllBtn}
-          onPress={() => router.push("/timeline")}
-        >
-          <Text style={styles.viewAllText}>View all</Text>
-        </TouchableOpacity>
-      ) : null}
-    </View>
-  )}
-</View>
+              {mods.length > 5 ? (
+                <TouchableOpacity
+                  style={styles.viewAllBtn}
+                  onPress={() => router.push("/timeline")}
+                >
+                  <Text style={styles.viewAllText}>View all</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          )}
+        </View>
 
         <TouchableOpacity
           style={styles.button}
@@ -365,57 +429,101 @@ const styles = StyleSheet.create({
     color: "#ff3b3b",
     fontWeight: "700",
   },
-recentSection: {
-  marginTop: 6,
-  marginBottom: 14,
-},
-sectionTitle: {
-  color: "#fff",
-  fontWeight: "700",
-  marginBottom: 10,
-},
-emptyText: {
-  color: "#888",
-},
-recentList: {
-  gap: 8,
-},
-recentItem: {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "space-between",
-  backgroundColor: "#0f0f0f",
-  borderWidth: 1,
-  borderColor: "#2a2a2a",
-  paddingVertical: 10,
-  paddingHorizontal: 12,
-  borderRadius: 12,
-},
-recentName: {
-  color: "#fff",
-  fontWeight: "700",
-  flex: 1,
-  marginRight: 10,
-},
-recentMeta: {
-  color: "#bbb",
-  fontWeight: "700",
-},
-viewAllBtn: {
-  marginTop: 6,
-  alignSelf: "flex-start",
-  paddingVertical: 8,
-  paddingHorizontal: 10,
-  borderRadius: 10,
-  backgroundColor: "#0f0f0f",
-  borderWidth: 1,
-  borderColor: "#2a2a2a",
-},
-viewAllText: {
-  color: "#fff",
-  fontWeight: "800",
-  fontSize: 12,
-},
+  recentSection: {
+    marginTop: 6,
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    color: "#fff",
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  emptyText: {
+    color: "#888",
+  },
+  recentList: {
+    gap: 8,
+  },
+  recentItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  recentName: {
+    color: "#fff",
+    fontWeight: "700",
+    flex: 1,
+    marginRight: 10,
+  },
+  recentMeta: {
+    color: "#bbb",
+    fontWeight: "700",
+  },
+  viewAllBtn: {
+    marginTop: 6,
+    alignSelf: "flex-start",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+  },
+  viewAllText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  mileageCard: {
+    marginTop: 10,
+    marginBottom: 14,
+  },
+  mileageDisplay: {
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  mileageValue: {
+    color: "#fff",
+    fontWeight: "800",
+  },
+  mileageRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  mileageInput: {
+    flex: 1,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    color: "#fff",
+    fontWeight: "700",
+  },
+  mileageSaveBtn: {
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+  },
+  mileageSaveText: {
+    color: "#fff",
+    fontWeight: "900",
+  },
 
 
 });

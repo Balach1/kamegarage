@@ -1,5 +1,6 @@
 import { Screen } from "@/components/screen";
-import { saveCar } from "@/lib/carStorage";
+import { getCar, saveCar } from "@/lib/carStorage";
+import { clearServices } from "@/lib/serviceStorage";
 import { clearMods } from "@/lib/storage";
 import { Alert, Platform, StyleSheet, Text, TouchableOpacity } from "react-native";
 
@@ -23,13 +24,13 @@ export default function SettingsScreen() {
   async function resetEntireGarage() {
     const doReset = async () => {
       await clearMods();
-      await saveCar({ name: "My Car", heroImageUri: null });
+      await saveCar({ name: "My Car", heroImageUri: null, currentMileage: null, motExpiryISO: null });
     };
 
     if (Platform.OS === "web") {
       if (
         window.confirm(
-          "Reset entire garage?\n\nThis will delete all mods and reset your car."
+          "Reset entire garage?\n\nThis will delete all mods and reset your car profile."
         )
       ) {
         await doReset();
@@ -43,18 +44,61 @@ export default function SettingsScreen() {
     ]);
   }
 
+  async function clearMotDate() {
+    const doClear = async () => {
+      const car = await getCar();
+      await saveCar({ ...car, motExpiryISO: null });
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm("Clear MOT date?")) await doClear();
+      return;
+    }
+
+    Alert.alert("Clear MOT", "This will remove your saved MOT date.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Clear", style: "destructive", onPress: () => void doClear() },
+    ]);
+  }
+
+  async function clearServiceHistory() {
+    const doClear = async () => {
+      await clearServices();
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm("Clear service history?")) await doClear();
+      return;
+    }
+
+    Alert.alert("Clear Service History", "This will delete all service entries.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Clear", style: "destructive", onPress: () => void doClear() },
+    ]);
+  }
+
   return (
     <Screen>
       <Text style={styles.title}>Settings</Text>
+
+      <Text style={styles.sectionHeader}>Maintenance</Text>
+
+      <TouchableOpacity style={styles.btn} onPress={clearMotDate}>
+        <Text style={styles.btnText}>Clear MOT Date</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.btn} onPress={clearServiceHistory}>
+        <Text style={styles.btnText}>Clear Service History</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.sectionHeader}>Garage</Text>
 
       <TouchableOpacity style={styles.btn} onPress={resetModsOnly}>
         <Text style={styles.btnText}>Reset Mods Only</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={[styles.btn, styles.danger]} onPress={resetEntireGarage}>
-        <Text style={[styles.btnText, styles.dangerText]}>
-          Reset Entire Garage
-        </Text>
+        <Text style={[styles.btnText, styles.dangerText]}>Reset Entire Garage</Text>
       </TouchableOpacity>
     </Screen>
   );
@@ -62,6 +106,16 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   title: { color: "#fff", fontSize: 28, fontWeight: "600", marginBottom: 20 },
+
+  sectionHeader: {
+    color: "#888",
+    fontWeight: "800",
+    marginTop: 10,
+    marginBottom: 10,
+    textTransform: "uppercase",
+    fontSize: 12,
+  },
+
   btn: {
     backgroundColor: "#1a1a1a",
     paddingVertical: 14,

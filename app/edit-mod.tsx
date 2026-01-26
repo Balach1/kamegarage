@@ -83,63 +83,76 @@ export default function EditModScreen() {
 
   if (!mod) return null;
 
+  const Content = (
+    <Screen>
+      <Text style={styles.title}>Edit Mod</Text>
+
+      <TextInput value={title} onChangeText={setTitle} style={styles.input} />
+      <TextInput
+        value={cost}
+        onChangeText={setCost}
+        keyboardType="numeric"
+        style={styles.input}
+      />
+      <TextInput
+        value={notes}
+        onChangeText={setNotes}
+        style={[styles.input, styles.notes]}
+        multiline
+      />
+
+      <View style={styles.photoRow}>
+        <TouchableOpacity
+          style={styles.photoBox}
+          onPress={() => pickImage((u) => setBeforeUri(u))}
+        >
+          {beforeUri ? (
+            <Image source={{ uri: beforeUri }} style={styles.photo} />
+          ) : (
+            <Text style={styles.photoText}>Before</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.photoBox}
+          onPress={() => pickImage((u) => setAfterUri(u))}
+        >
+          {afterUri ? (
+            <Image source={{ uri: afterUri }} style={styles.photo} />
+          ) : (
+            <Text style={styles.photoText}>After</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity style={styles.saveBtn} onPress={save}>
+        <Text style={styles.saveText}>Save Changes</Text>
+      </TouchableOpacity>
+    </Screen>
+  );
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      {Platform.OS === "web" ? (
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ flexGrow: 1 }}
         >
-          <Screen>
-            <Text style={styles.title}>Edit Mod</Text>
-
-            <TextInput value={title} onChangeText={setTitle} style={styles.input} />
-            <TextInput
-              value={cost}
-              onChangeText={setCost}
-              keyboardType="numeric"
-              style={styles.input}
-            />
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              style={[styles.input, styles.notes]}
-              multiline
-            />
-
-            <View style={styles.photoRow}>
-              <TouchableOpacity
-                style={styles.photoBox}
-                onPress={() => pickImage(setBeforeUri)}
-              >
-                {beforeUri ? (
-                  <Image source={{ uri: beforeUri }} style={styles.photo} />
-                ) : (
-                  <Text style={styles.photoText}>Before</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.photoBox}
-                onPress={() => pickImage(setAfterUri)}
-              >
-                {afterUri ? (
-                  <Image source={{ uri: afterUri }} style={styles.photo} />
-                ) : (
-                  <Text style={styles.photoText}>After</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity style={styles.saveBtn} onPress={save}>
-              <Text style={styles.saveText}>Save Changes</Text>
-            </TouchableOpacity>
-          </Screen>
+          {Content}
         </ScrollView>
-      </TouchableWithoutFeedback>
+      ) : (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ flexGrow: 1 }}
+          >
+            {Content}
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      )}
     </KeyboardAvoidingView>
   );
 }

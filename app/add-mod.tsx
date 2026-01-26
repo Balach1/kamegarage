@@ -2,17 +2,17 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
 
 import { Screen } from "@/components/screen";
@@ -26,8 +26,7 @@ export default function AddModScreen() {
   const [afterUri, setAfterUri] = useState<string | null>(null);
 
   async function pickImage(setter: (uri: string) => void) {
-    const { status } =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -66,75 +65,88 @@ export default function AddModScreen() {
     router.back();
   }
 
+  const Content = (
+    <Screen>
+      <Text style={styles.title}>Add Mod</Text>
+
+      <TextInput
+        placeholder="Mod name"
+        placeholderTextColor="#777"
+        value={title}
+        onChangeText={setTitle}
+        style={styles.input}
+      />
+
+      <TextInput
+        placeholder="Cost (£)"
+        placeholderTextColor="#777"
+        value={cost}
+        onChangeText={setCost}
+        keyboardType="numeric"
+        style={styles.input}
+      />
+
+      <TextInput
+        placeholder="Notes"
+        placeholderTextColor="#777"
+        value={notes}
+        onChangeText={setNotes}
+        style={[styles.input, styles.notes]}
+        multiline
+      />
+
+      <View style={styles.photoRow}>
+        <TouchableOpacity
+          style={styles.photoBox}
+          onPress={() => pickImage((u) => setBeforeUri(u))}
+        >
+          {beforeUri ? (
+            <Image source={{ uri: beforeUri }} style={styles.photo} />
+          ) : (
+            <Text style={styles.photoText}>Add Before</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.photoBox}
+          onPress={() => pickImage((u) => setAfterUri(u))}
+        >
+          {afterUri ? (
+            <Image source={{ uri: afterUri }} style={styles.photo} />
+          ) : (
+            <Text style={styles.photoText}>Add After</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity style={styles.saveBtn} onPress={save}>
+        <Text style={styles.saveText}>Save Mod</Text>
+      </TouchableOpacity>
+    </Screen>
+  );
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      {Platform.OS === "web" ? (
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ flexGrow: 1 }}
         >
-          <Screen>
-            <Text style={styles.title}>Add Mod</Text>
-
-            <TextInput
-              placeholder="Mod name"
-              placeholderTextColor="#777"
-              value={title}
-              onChangeText={setTitle}
-              style={styles.input}
-            />
-
-            <TextInput
-              placeholder="Cost (£)"
-              placeholderTextColor="#777"
-              value={cost}
-              onChangeText={setCost}
-              keyboardType="numeric"
-              style={styles.input}
-            />
-
-            <TextInput
-              placeholder="Notes"
-              placeholderTextColor="#777"
-              value={notes}
-              onChangeText={setNotes}
-              style={[styles.input, styles.notes]}
-              multiline
-            />
-
-            <View style={styles.photoRow}>
-              <TouchableOpacity
-                style={styles.photoBox}
-                onPress={() => pickImage(setBeforeUri)}
-              >
-                {beforeUri ? (
-                  <Image source={{ uri: beforeUri }} style={styles.photo} />
-                ) : (
-                  <Text style={styles.photoText}>Add Before</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.photoBox}
-                onPress={() => pickImage(setAfterUri)}
-              >
-                {afterUri ? (
-                  <Image source={{ uri: afterUri }} style={styles.photo} />
-                ) : (
-                  <Text style={styles.photoText}>Add After</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity style={styles.saveBtn} onPress={save}>
-              <Text style={styles.saveText}>Save Mod</Text>
-            </TouchableOpacity>
-          </Screen>
+          {Content}
         </ScrollView>
-      </TouchableWithoutFeedback>
+      ) : (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ flexGrow: 1 }}
+          >
+            {Content}
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      )}
     </KeyboardAvoidingView>
   );
 }
