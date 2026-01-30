@@ -1,3 +1,4 @@
+import { emitTrophyCheck } from "@/lib/trophyEvents";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type MileageUnit = "mi" | "km";
@@ -12,6 +13,7 @@ export type CarSpecs = {
 };
 
 export type CarProfile = {
+  garageTitle: string;
   name: string;
   heroImageUri: string | null;
   currentMileage: number | null;
@@ -25,6 +27,7 @@ export type CarProfile = {
 const KEY = "garage.car.v1";
 
 export const DEFAULT_CAR: CarProfile = {
+  garageTitle: "Your Garage",
   name: "My Car",
   heroImageUri: null,
   currentMileage: null,
@@ -49,12 +52,14 @@ export async function getCar(): Promise<CarProfile> {
 
     // ✅ Merge defaults so older saves get new fields automatically
     return {
+      
       ...DEFAULT_CAR,
       ...parsed,
       specs: {
         ...DEFAULT_CAR.specs,
         ...(parsed?.specs ?? {}),
       },
+      garageTitle: typeof parsed?.garageTitle === "string" ? parsed.garageTitle : "Your Garage",
       mileageUnit:
         parsed?.mileageUnit === "km" || parsed?.mileageUnit === "mi"
           ? parsed.mileageUnit
@@ -67,4 +72,6 @@ export async function getCar(): Promise<CarProfile> {
 
 export async function saveCar(car: CarProfile): Promise<void> {
   await AsyncStorage.setItem(KEY, JSON.stringify(car));
+  emitTrophyCheck();
 }
+

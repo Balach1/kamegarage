@@ -32,14 +32,15 @@
         {
           "image": "./assets/images/iphone.png",
           "imageWidth": 1080,
-          "imageHeight":1920,
+          "imageHeight": 1920,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

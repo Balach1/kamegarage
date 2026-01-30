@@ -15,35 +15,28 @@ import {
 } from "react-native";
 
 import { Screen } from "@/components/screen";
-import { CarProfile, getCar, saveCar } from "@/lib/carStorage";
+import { CarProfile, DEFAULT_CAR, getCar, saveCar } from "@/lib/carStorage";
 import { getMods, ModEntry } from "@/lib/storage";
 
 export default function GarageScreen() {
-  const [car, setCar] = useState<CarProfile>({
-    name: "My Car",
-    heroImageUri: null,
-    currentMileage: null,
-    motExpiryISO: null,
-    specs: {
-      bhp: null,
-      mpg: null,
-      zeroToSixty: null,
-      drivetrain: null,
-      transmission: null,
-      colour: null,
-    },
-    mileageUnit: "mi",
-  });
-
+  const [car, setCar] = useState<CarProfile>(DEFAULT_CAR);
   const [mods, setMods] = useState<ModEntry[]>([]);
 
+  // Editing: garage title
+  const [isEditingGarageTitle, setIsEditingGarageTitle] = useState(false);
+  const [garageTitleDraft, setGarageTitleDraft] = useState(
+    DEFAULT_CAR.garageTitle
+  );
+
+  // Editing: car name
   const [isEditingName, setIsEditingName] = useState(false);
-  const [nameDraft, setNameDraft] = useState(car.name);
+  const [nameDraft, setNameDraft] = useState(DEFAULT_CAR.name);
 
-  const [trophyCount, setTrophyCount] = useState(0);
-
+  // Editing: mileage
   const [isEditingMileage, setIsEditingMileage] = useState(false);
   const [mileageDraft, setMileageDraft] = useState("");
+
+  const [trophyCount, setTrophyCount] = useState(0);
 
   const unit = car.mileageUnit ?? "mi";
   const unitLabel = unit === "km" ? "km" : "mi";
@@ -62,13 +55,15 @@ export default function GarageScreen() {
         if (!alive) return;
 
         setCar(carData);
-        setNameDraft(carData.name);
+        setMods(modsData);
+        setTrophyCount(trophies.filter((t) => t.earned).length);
+
+        // ✅ sync drafts from storage every focus
+        setGarageTitleDraft(carData.garageTitle ?? DEFAULT_CAR.garageTitle);
+        setNameDraft(carData.name ?? DEFAULT_CAR.name);
         setMileageDraft(
           carData.currentMileage != null ? String(carData.currentMileage) : ""
         );
-
-        setMods(modsData);
-        setTrophyCount(trophies.filter((t) => t.earned).length);
       })();
 
       return () => {
@@ -131,8 +126,16 @@ export default function GarageScreen() {
     [mods]
   );
 
+  async function saveGarageTitle(nextTitle: string) {
+    const cleaned = nextTitle.trim() || DEFAULT_CAR.garageTitle;
+    const next: CarProfile = { ...car, garageTitle: cleaned };
+    setCar(next);
+    setGarageTitleDraft(cleaned);
+    await saveCar(next);
+  }
+
   async function saveName(nextName: string) {
-    const cleaned = nextName.trim() || "My Car";
+    const cleaned = nextName.trim() || DEFAULT_CAR.name;
     const next: CarProfile = { ...car, name: cleaned };
     setCar(next);
     setNameDraft(cleaned);
@@ -180,10 +183,59 @@ export default function GarageScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Your Garage</Text>
-
         <View style={styles.card}>
-          {/* Header row: Name + edit + Mileage (tap to edit) */}
+          {/* Garage title */}
+          {isEditingGarageTitle ? (
+            <View style={styles.pageTitleRow}>
+              <TextInput
+                value={garageTitleDraft}
+                onChangeText={setGarageTitleDraft}
+                autoFocus
+                placeholder="Garage title"
+                placeholderTextColor="#777"
+                style={styles.pageTitleInput}
+                returnKeyType="done"
+                onSubmitEditing={async () => {
+                  await saveGarageTitle(garageTitleDraft);
+                  setIsEditingGarageTitle(false);
+                  Keyboard.dismiss();
+                }}
+                onBlur={async () => {
+                  await saveGarageTitle(garageTitleDraft);
+                  setIsEditingGarageTitle(false);
+                }}
+              />
+
+              <TouchableOpacity
+                onPress={async () => {
+                  await saveGarageTitle(garageTitleDraft);
+                  setIsEditingGarageTitle(false);
+                  Keyboard.dismiss();
+                }}
+                style={styles.pageTitleSaveBtn}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.pageTitleSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.pageTitleRow}
+              activeOpacity={0.75}
+              onPress={() => {
+                setIsEditingName(false);
+                setIsEditingMileage(false);
+                setIsEditingGarageTitle(true);
+              }}
+            >
+              <Text style={styles.title}>
+                {car.garageTitle ?? DEFAULT_CAR.garageTitle}
+              </Text>
+              <Ionicons name="pencil" size={16} color="#aaa" />
+            </TouchableOpacity>
+          )}
+
+          {/* Header row: Name + edit + Mileage */}
           {isEditingName ? (
             <View style={styles.headerRow}>
               <TextInput
@@ -205,7 +257,7 @@ export default function GarageScreen() {
                 }}
               />
 
-              {/* Keep mileage visible while editing name */}
+              {/* Mileage visible while editing name */}
               {isEditingMileage ? (
                 <TextInput
                   value={mileageDraft}
@@ -230,6 +282,7 @@ export default function GarageScreen() {
                   style={styles.mileageChip}
                   activeOpacity={0.75}
                   onPress={() => {
+                    setIsEditingGarageTitle(false);
                     setIsEditingName(false);
                     setIsEditingMileage(true);
                   }}
@@ -248,6 +301,7 @@ export default function GarageScreen() {
                 style={styles.nameTap}
                 activeOpacity={0.75}
                 onPress={() => {
+                  setIsEditingGarageTitle(false);
                   setIsEditingMileage(false);
                   setIsEditingName(true);
                 }}
@@ -283,6 +337,7 @@ export default function GarageScreen() {
                   style={styles.mileageChip}
                   activeOpacity={0.75}
                   onPress={() => {
+                    setIsEditingGarageTitle(false);
                     setIsEditingName(false);
                     setIsEditingMileage(true);
                   }}
@@ -306,8 +361,6 @@ export default function GarageScreen() {
             {heroUri ? (
               <View style={styles.heroWrap}>
                 <Image source={{ uri: heroUri }} style={styles.carImage} />
-
-                {/* small replace icon */}
                 <View style={styles.heroOverlayIcon}>
                   <Ionicons name="camera" size={16} color="#bbb" />
                 </View>
@@ -403,7 +456,6 @@ export default function GarageScreen() {
           <View style={styles.recentSection}>
             <Text style={styles.sectionTitle}>Recent mods</Text>
 
-            {/* Installed header + spent pill */}
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.subSectionTitle}>
                 Installed ({installedCount})
@@ -447,7 +499,6 @@ export default function GarageScreen() {
               </View>
             )}
 
-            {/* Planned header + budget pill */}
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.subSectionTitle}>Planned ({plannedCount})</Text>
 
@@ -509,16 +560,47 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 28,
     fontWeight: "600",
-    marginBottom: 20,
   },
   card: {
     backgroundColor: "#1a1a1a",
     borderRadius: 16,
     padding: 16,
   },
-
   scrollContent: {
     paddingBottom: 120,
+  },
+
+  // Garage title edit
+  pageTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 16,
+  },
+  pageTitleInput: {
+    flex: 1,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: "#fff",
+    fontSize: 26,
+    fontWeight: "800",
+  },
+  pageTitleSaveBtn: {
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+  },
+  pageTitleSaveText: {
+    color: "#fff",
+    fontWeight: "900",
   },
 
   // Header row
@@ -586,9 +668,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 12,
   },
-
   heroWrap: { position: "relative" },
-
   heroOverlayIcon: {
     position: "absolute",
     top: 10,
@@ -602,7 +682,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   heroPlaceholder: {
     width: "100%",
     height: 200,
@@ -623,7 +702,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 12,
     marginBottom: 12,
-    marginTop: 4,
+    marginTop: 8,
   },
   inlineStat: { alignItems: "center" },
   statValueInline: { color: "#fff", fontSize: 20, fontWeight: "800" },

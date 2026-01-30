@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export function TrophyToast({
   trophy,
@@ -8,6 +9,7 @@ export function TrophyToast({
   trophy: { icon: string; title: string } | null;
   onDone: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   const slide = useRef(new Animated.Value(-90)).current;
 
   useEffect(() => {
@@ -33,11 +35,17 @@ export function TrophyToast({
   if (!trophy) return null;
 
   return (
-    <Animated.View style={[styles.toast, { transform: [{ translateY: slide }] }]}>
-      <Text style={styles.icon}>{trophy.icon}</Text>
+    <Animated.View
+      style={[
+        styles.toast,
+        { top: insets.top + 10 },
+        { transform: [{ translateY: slide }] },
+      ]}
+    >
+      <Text style={styles.toastIcon}>{trophy.icon}</Text>
       <View style={{ flex: 1 }}>
-        <Text style={styles.title}>Trophy Unlocked</Text>
-        <Text style={styles.sub}>{trophy.title}</Text>
+        <Text style={styles.toastTitle}>Trophy Unlocked</Text>
+        <Text style={styles.toastSub}>{trophy.title}</Text>
       </View>
     </Animated.View>
   );
@@ -46,7 +54,6 @@ export function TrophyToast({
 const styles = StyleSheet.create({
   toast: {
     position: "absolute",
-    top: 10,
     left: 12,
     right: 12,
     zIndex: 999,
@@ -60,7 +67,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  icon: { fontSize: 22 },
-  title: { color: "#fff", fontWeight: "900", fontSize: 12, opacity: 0.9 },
-  sub: { color: "#fff", fontWeight: "900", fontSize: 16 },
+  toastIcon: { fontSize: 22 },
+  toastTitle: { color: "#fff", fontWeight: "900", fontSize: 12, opacity: 0.9 },
+  toastSub: { color: "#fff", fontWeight: "900", fontSize: 16 },
 });
