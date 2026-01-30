@@ -1,8 +1,5 @@
-import { getMods, ModEntry, saveMods } from "@/lib/storage";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
-
-
+import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Image,
@@ -16,11 +13,17 @@ import {
 import { Swipeable } from "react-native-gesture-handler";
 
 import { Screen } from "@/components/screen";
+import { getMods, ModEntry, ModStatus, saveMods } from "@/lib/storage";
+
+type TimelineTab = "installed" | "planned";
 
 export default function TimelineScreen() {
   const [mods, setModsState] = useState<ModEntry[]>([]);
+  const [tab, setTab] = useState<TimelineTab>("installed");
+
   const [undoItem, setUndoItem] = useState<ModEntry | null>(null);
-  const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [undoTimer, setUndoTimer] =
+    useState<ReturnType<typeof setTimeout> | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -35,6 +38,12 @@ export default function TimelineScreen() {
     }, [])
   );
 
+  const filtered = useMemo(() => {
+    // Installed tab includes ONLY installed mods (not removed)
+    if (tab === "installed") return mods.filter((m) => m.status === "installed");
+    return mods.filter((m) => m.status === "planned");
+  }, [mods, tab]);
+
   async function confirmDelete(id: string) {
     const doDelete = async () => {
       const current = await getMods();
@@ -45,10 +54,10 @@ export default function TimelineScreen() {
       setModsState(next);
 
       if (undoTimer) clearTimeout(undoTimer);
-
       setUndoItem(removed);
-      const timer = setTimeout(() => setUndoItem(null), 4000);
-      setUndoTimer(timer);
+
+      const t = setTimeout(() => setUndoItem(null), 4000);
+      setUndoTimer(t);
     };
 
     if (Platform.OS === "web") {
@@ -58,7 +67,7 @@ export default function TimelineScreen() {
 
     Alert.alert("Delete Mod", "This cannot be undone.", [
       { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: doDelete },
+      { text: "Delete", style: "destructive", onPress: () => void doDelete() },
     ]);
   }
 
@@ -75,6 +84,12 @@ export default function TimelineScreen() {
     if (undoTimer) clearTimeout(undoTimer);
   }
 
+  function statusLabel(s: ModStatus) {
+    if (s === "planned") return "Planned";
+    if (s === "removed") return "Removed";
+    return "Installed";
+  }
+
   function renderRightActions(onDelete: () => void) {
     return (
       <TouchableOpacity style={styles.swipeDelete} onPress={onDelete}>
@@ -87,17 +102,60 @@ export default function TimelineScreen() {
     <Screen>
       <Text style={styles.title}>Timeline</Text>
 
-      {mods.length === 0 ? (
-        <Text style={styles.empty}>No mods yet. Add your first mod.</Text>
+      {/* ✅ Tabs */}
+      <View style={styles.tabs}>
+        <TouchableOpacity
+          onPress={() => setTab("installed")}
+          style={[styles.tabBtn, tab === "installed" && styles.tabActive]}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.tabText, tab === "installed" && styles.tabTextActive]}>
+            Installed
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setTab("planned")}
+          style={[styles.tabBtn, tab === "planned" && styles.tabActivePlanned]}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.tabText, tab === "planned" && styles.tabTextActive]}>
+            Planned
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {filtered.length === 0 ? (
+        <Text style={styles.empty}>
+          {tab === "installed"
+            ? "No installed mods yet."
+            : "No planned mods yet."}
+        </Text>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-          {mods.map((m) => {
+          {filtered.map((m) => {
             const Card = (
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <TouchableOpacity onPress={() => router.push(`/edit-mod?id=${m.id}`)}>
-  <Text style={styles.modTitle}>{m.title}</Text>
-</TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => router.push(`/edit-mod?id=${m.id}`)}
+                    activeOpacity={0.75}
+                    style={styles.titleWrap}
+                  >
+                    <Text style={styles.modTitle} numberOfLines={1}>
+                      {m.title}
+                    </Text>
+
+                    <View
+                      style={[
+                        styles.badge,
+                        m.status === "planned" && styles.badgePlanned,
+                        m.status === "removed" && styles.badgeRemoved,
+                      ]}
+                    >
+                      <Text style={styles.badgeText}>{statusLabel(m.status)}</Text>
+                    </View>
+                  </TouchableOpacity>
 
                   <TouchableOpacity
                     onPress={() => confirmDelete(m.id)}
@@ -136,18 +194,12 @@ export default function TimelineScreen() {
                   </Text>
                 </View>
 
-                {m.notes ? (
-                  <Text style={styles.notes}>{m.notes}</Text>
-                ) : null}
+                {m.notes ? <Text style={styles.notes}>{m.notes}</Text> : null}
               </View>
             );
 
-            // Web = no swipe
-            if (Platform.OS === "web") {
-              return <View key={m.id}>{Card}</View>;
-            }
+            if (Platform.OS === "web") return <View key={m.id}>{Card}</View>;
 
-            // Mobile = swipe
             return (
               <Swipeable
                 key={m.id}
@@ -181,11 +233,40 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 24,
     fontWeight: "600",
+    marginBottom: 12,
+  },
+
+  // ✅ Tabs
+  tabs: {
+    flexDirection: "row",
+    gap: 10,
     marginBottom: 14,
   },
-  empty: {
-    color: "#aaa",
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 999,
+    alignItems: "center",
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
   },
+  tabActive: {
+    borderColor: "#fff",
+  },
+  tabActivePlanned: {
+    borderColor: "#ffb020",
+  },
+  tabText: {
+    color: "#bbb",
+    fontWeight: "900",
+  },
+  tabTextActive: {
+    color: "#fff",
+  },
+
+  empty: { color: "#aaa" },
+
   card: {
     backgroundColor: "#1a1a1a",
     borderRadius: 16,
@@ -199,12 +280,33 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 10,
+    gap: 10,
+  },
+  titleWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
   },
   modTitle: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "700",
+    flex: 1,
   },
+
+  badge: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    backgroundColor: "#0f0f0f",
+  },
+  badgePlanned: { borderColor: "#ffb020" },
+  badgeRemoved: { borderColor: "#ff3b3b" },
+  badgeText: { color: "#fff", fontWeight: "800", fontSize: 11 },
+
   deleteBtn: {
     paddingVertical: 6,
     paddingHorizontal: 10,
@@ -213,27 +315,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2a2a2a",
   },
-  deleteText: {
-    color: "#ff3b3b",
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  photoBox: {
-    flex: 1,
-  },
-  photoLabel: {
-    color: "#bbb",
-    fontWeight: "600",
-    marginBottom: 6,
-  },
-  photo: {
-    height: 140,
-    borderRadius: 12,
-  },
+  deleteText: { color: "#ff3b3b", fontWeight: "700", fontSize: 12 },
+
+  row: { flexDirection: "row", gap: 12 },
+  photoBox: { flex: 1 },
+  photoLabel: { color: "#bbb", fontWeight: "600", marginBottom: 6 },
+  photo: { height: 140, borderRadius: 12 },
   placeholder: {
     height: 140,
     borderRadius: 12,
@@ -241,20 +328,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2a2a2a",
   },
+
   metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 10,
   },
-  meta: {
-    color: "#bbb",
-    fontWeight: "600",
-  },
-  notes: {
-    color: "#ddd",
-    marginTop: 10,
-    lineHeight: 18,
-  },
+  meta: { color: "#bbb", fontWeight: "600" },
+  notes: { color: "#ddd", marginTop: 10, lineHeight: 18 },
+
   swipeDelete: {
     width: 90,
     justifyContent: "center",
@@ -263,10 +345,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 12,
   },
-  swipeDeleteText: {
-    color: "#fff",
-    fontWeight: "900",
-  },
+  swipeDeleteText: { color: "#fff", fontWeight: "900" },
+
   undoBar: {
     position: "absolute",
     left: 20,
@@ -282,10 +362,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  undoText: {
-    color: "#fff",
-    fontWeight: "700",
-  },
+  undoText: { color: "#fff", fontWeight: "700" },
   undoBtn: {
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -294,8 +371,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2a2a2a",
   },
-  undoBtnText: {
-    color: "#fff",
-    fontWeight: "900",
-  },
+  undoBtnText: { color: "#fff", fontWeight: "900" },
 });

@@ -9,19 +9,38 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
 
 import { Screen } from "@/components/screen";
 import { getCar, saveCar } from "@/lib/carStorage";
 
+type Drivetrain = "RWD" | "FWD" | "AWD";
+type Transmission = "Manual" | "Auto" | "Semi";
+
+const COLOURS = [
+  "Black",
+  "White",
+  "Silver",
+  "Grey",
+  "Red",
+  "Blue",
+  "Green",
+  "Yellow",
+  "Orange",
+] as const;
+
 export default function EditSpecsScreen() {
   const [bhp, setBhp] = useState("");
   const [mpg, setMpg] = useState("");
-  const [colour, setColour] = useState<string>("");
   const [zeroToSixty, setZeroToSixty] = useState("");
-  const [drivetrain, setDrivetrain] = useState("");
-  const [transmission, setTransmission] = useState("");
+
+  const [drivetrain, setDrivetrain] = useState<Drivetrain | "">("");
+  const [transmission, setTransmission] = useState<Transmission | "">("");
+
+  // ✅ NEW: colour state
+  const [colour, setColour] = useState<string>("");
 
   useFocusEffect(
     useCallback(() => {
@@ -36,8 +55,14 @@ export default function EditSpecsScreen() {
         setZeroToSixty(
           car.specs?.zeroToSixty != null ? String(car.specs.zeroToSixty) : ""
         );
-        setDrivetrain(car.specs?.drivetrain ?? "");
-        setTransmission(car.specs?.transmission ?? "");
+
+        const dt = car.specs?.drivetrain ?? "";
+        setDrivetrain(dt === "RWD" || dt === "FWD" || dt === "AWD" ? dt : "");
+
+        const tr = car.specs?.transmission ?? "";
+        setTransmission(tr === "Manual" || tr === "Auto" || tr === "Semi" ? tr : "");
+
+        // ✅ load colour
         setColour(car.specs?.colour ?? "");
       })();
 
@@ -54,6 +79,11 @@ export default function EditSpecsScreen() {
     return Number.isFinite(n) ? n : null;
   }
 
+  function goBackOrHome() {
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  }
+
   async function save() {
     const car = await getCar();
 
@@ -63,15 +93,19 @@ export default function EditSpecsScreen() {
         bhp: toNumberOrNull(bhp),
         mpg: toNumberOrNull(mpg),
         zeroToSixty: toNumberOrNull(zeroToSixty),
-        drivetrain: drivetrain.trim() || null,
-        transmission: transmission.trim() || null,
-        colour: colour || null,
-
+        drivetrain: drivetrain || null,
+        transmission: transmission || null,
+        colour: colour || null, // ✅ CRITICAL
       },
     };
 
     await saveCar(next);
-    router.back();
+
+    // ✅ Debug proof (remove later)
+    const check = await getCar();
+    console.log("Saved colour:", check.specs?.colour);
+
+    goBackOrHome();
   }
 
   const Content = (
@@ -109,29 +143,68 @@ export default function EditSpecsScreen() {
       />
 
       <Text style={styles.label}>Drivetrain</Text>
-      <TextInput
-        value={drivetrain}
-        onChangeText={setDrivetrain}
-        placeholder="e.g. RWD"
-        placeholderTextColor="#777"
-        style={styles.input}
-        autoCapitalize="characters"
-      />
+      <View style={styles.segmentRow}>
+        {(["RWD", "FWD", "AWD"] as const).map((v) => (
+          <TouchableOpacity
+            key={v}
+            onPress={() => setDrivetrain(v)}
+            style={[styles.segment, drivetrain === v && styles.segmentActive]}
+            activeOpacity={0.85}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                drivetrain === v && styles.segmentTextActive,
+              ]}
+            >
+              {v}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <Text style={styles.label}>Transmission</Text>
-      <TextInput
-        value={transmission}
-        onChangeText={setTransmission}
-        placeholder="e.g. Manual"
-        placeholderTextColor="#777"
-        style={styles.input}
-      />
+      <View style={styles.segmentRow}>
+        {(["Manual", "Auto", "Semi"] as const).map((v) => (
+          <TouchableOpacity
+            key={v}
+            onPress={() => setTransmission(v)}
+            style={[styles.segment, transmission === v && styles.segmentActive]}
+            activeOpacity={0.85}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                transmission === v && styles.segmentTextActive,
+              ]}
+            >
+              {v}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.label}>Colour</Text>
+      <View style={styles.colourRow}>
+        {COLOURS.map((c) => (
+          <TouchableOpacity
+            key={c}
+            onPress={() => setColour(c)}
+            style={[styles.colourPill, colour === c && styles.colourPillActive]}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.colourText, colour === c && styles.colourTextActive]}>
+              {c}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <TouchableOpacity style={styles.saveBtn} onPress={save}>
         <Text style={styles.saveText}>Save Specs</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
+      <TouchableOpacity style={styles.cancelBtn} onPress={goBackOrHome}>
         <Text style={styles.cancelText}>Cancel</Text>
       </TouchableOpacity>
     </Screen>
@@ -166,6 +239,7 @@ export default function EditSpecsScreen() {
 const styles = StyleSheet.create({
   title: { color: "#fff", fontSize: 24, fontWeight: "800", marginBottom: 14 },
   label: { color: "#bbb", fontWeight: "800", marginBottom: 6, marginTop: 10 },
+
   input: {
     backgroundColor: "#1a1a1a",
     borderRadius: 12,
@@ -174,6 +248,43 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#222",
   },
+
+  segmentRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 6,
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 999,
+    alignItems: "center",
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+  },
+  segmentActive: { borderColor: "#fff" },
+  segmentText: { color: "#bbb", fontWeight: "900" },
+  segmentTextActive: { color: "#fff" },
+
+  colourRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 6,
+  },
+  colourPill: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+  },
+  colourPillActive: { borderColor: "#fff" },
+  colourText: { color: "#bbb", fontWeight: "900", fontSize: 12 },
+  colourTextActive: { color: "#fff" },
+
   saveBtn: {
     backgroundColor: "#ff3b3b",
     paddingVertical: 14,
@@ -182,6 +293,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   saveText: { color: "#fff", fontWeight: "900" },
+
   cancelBtn: {
     paddingVertical: 12,
     borderRadius: 12,

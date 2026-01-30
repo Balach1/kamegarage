@@ -1,14 +1,17 @@
+import { computeTrophies } from "@/lib/trophyEngine";
+import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
   Image,
   Keyboard,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 import { Screen } from "@/components/screen";
@@ -16,18 +19,64 @@ import { CarProfile, getCar, saveCar } from "@/lib/carStorage";
 import { getMods, ModEntry } from "@/lib/storage";
 
 export default function GarageScreen() {
-
-
   const [car, setCar] = useState<CarProfile>({
     name: "My Car",
     heroImageUri: null,
     currentMileage: null,
     motExpiryISO: null,
+    specs: {
+      bhp: null,
+      mpg: null,
+      zeroToSixty: null,
+      drivetrain: null,
+      transmission: null,
+      colour: null,
+    },
+    mileageUnit: "mi",
   });
 
   const [mods, setMods] = useState<ModEntry[]>([]);
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(car.name);
+
+  const [trophyCount, setTrophyCount] = useState(0);
+
+  const [isEditingMileage, setIsEditingMileage] = useState(false);
+  const [mileageDraft, setMileageDraft] = useState("");
+
+  const unit = car.mileageUnit ?? "mi";
+  const unitLabel = unit === "km" ? "km" : "mi";
+  const mileagePlaceholder = unit === "km" ? "Kilometres" : "Miles";
+
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+
+      (async () => {
+        const [carData, modsData, trophies] = await Promise.all([
+          getCar(),
+          getMods(),
+          computeTrophies(),
+        ]);
+        if (!alive) return;
+
+        setCar(carData);
+        setNameDraft(carData.name);
+        setMileageDraft(
+          carData.currentMileage != null ? String(carData.currentMileage) : ""
+        );
+
+        setMods(modsData);
+        setTrophyCount(trophies.filter((t) => t.earned).length);
+      })();
+
+      return () => {
+        alive = false;
+      };
+    }, [])
+  );
+
   const latestAfterUri = useMemo(() => {
     const firstWithAfter = mods.find((m) => !!m.afterUri);
     return firstWithAfter?.afterUri ?? null;
@@ -37,23 +86,50 @@ export default function GarageScreen() {
     car.heroImageUri !== null
       ? car.heroImageUri
       : mods.length > 0
-        ? latestAfterUri
-        : null;
+      ? latestAfterUri
+      : null;
 
+  const installedModsCount = useMemo(
+    () => mods.filter((m) => m.status === "installed").length,
+    [mods]
+  );
 
-  const modsCount = mods.length;
+  const installedCount = useMemo(
+    () => mods.filter((m) => m.status === "installed").length,
+    [mods]
+  );
+  const plannedCount = useMemo(
+    () => mods.filter((m) => m.status === "planned").length,
+    [mods]
+  );
 
-  const totalSpent = useMemo(() => {
+  const installedSpent = useMemo(() => {
     let sum = 0;
     for (const m of mods) {
+      if (m.status !== "installed") continue;
       if (typeof m.cost === "number" && Number.isFinite(m.cost)) sum += m.cost;
     }
     return sum;
   }, [mods]);
 
-  const recentMods = useMemo(() => mods.slice(0, 5), [mods]);
-  const [isEditingMileage, setIsEditingMileage] = useState(false);
-  const [mileageDraft, setMileageDraft] = useState("");
+  const plannedCost = useMemo(() => {
+    let sum = 0;
+    for (const m of mods) {
+      if (m.status !== "planned") continue;
+      if (typeof m.cost === "number" && Number.isFinite(m.cost)) sum += m.cost;
+    }
+    return sum;
+  }, [mods]);
+
+  const recentInstalledMods = useMemo(
+    () => mods.filter((m) => m.status === "installed").slice(0, 5),
+    [mods]
+  );
+
+  const recentPlannedMods = useMemo(
+    () => mods.filter((m) => m.status === "planned").slice(0, 5),
+    [mods]
+  );
 
   async function saveName(nextName: string) {
     const cleaned = nextName.trim() || "My Car";
@@ -63,46 +139,19 @@ export default function GarageScreen() {
     await saveCar(next);
   }
 
-  async function saveMileage(nextVal: string) {
-    const trimmed = nextVal.trim();
-    const parsed = trimmed ? Number(trimmed) : null;
-    const safe =
-      typeof parsed === "number" && Number.isFinite(parsed) ? parsed : null;
+  async function saveMileage(next: string) {
+    const cleaned = next.replace(/[^0-9]/g, "");
+    const n = cleaned ? Number(cleaned) : null;
+    const safe = typeof n === "number" && Number.isFinite(n) ? n : null;
 
-    const next: CarProfile = { ...car, currentMileage: safe };
-    setCar(next);
+    const nextCar: CarProfile = { ...car, currentMileage: safe };
+    setCar(nextCar);
     setMileageDraft(safe != null ? String(safe) : "");
-    await saveCar(next);
+    await saveCar(nextCar);
   }
 
-  // Load car + mods whenever the Garage screen focuses
-  useFocusEffect(
-    useCallback(() => {
-      let alive = true;
-
-      (async () => {
-        const [carData, modsData] = await Promise.all([getCar(), getMods()]);
-        if (!alive) return;
-
-        setCar(carData);
-        setMileageDraft(
-          carData.currentMileage != null ? String(carData.currentMileage) : ""
-        );
-        setNameDraft(carData.name);
-        setMods(modsData);
-      })();
-
-      return () => {
-        alive = false;
-      };
-    }, [])
-  );
-
-  // Auto-hero: if user hasn't set a hero, use most recent mod's "after" photo
-
   async function pickHero() {
-    const { status } =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -119,183 +168,338 @@ export default function GarageScreen() {
       ? `data:image/jpeg;base64,${asset.base64}`
       : asset.uri;
 
-    const next: CarProfile = {
-      ...car,
-      heroImageUri: uri,
-    };
-
+    const next: CarProfile = { ...car, heroImageUri: uri };
     setCar(next);
     await saveCar(next);
   }
 
-
   return (
     <Screen>
-      <Text style={styles.title}>Your Garage</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.title}>Your Garage</Text>
 
-      <View style={styles.card}>
-        {heroUri ? (
-          <Image source={{ uri: heroUri }} style={styles.carImage} />
-        ) : (
-          <View style={styles.heroPlaceholder}>
-            <Text style={styles.heroPlaceholderText}>Add a hero photo</Text>
-          </View>
-        )}
-
-        <TouchableOpacity style={styles.heroBtn} onPress={pickHero}>
-          <Text style={styles.heroBtnText}>
-            {car.heroImageUri
-              ? "Change hero photo"
-              : latestAfterUri
-                ? "Set hero photo (override auto)"
-                : "Set hero photo"}
-          </Text>
-        </TouchableOpacity>
-
-        {isEditingName ? (
-          <View style={styles.nameRow}>
-            <TextInput
-              value={nameDraft}
-              onChangeText={setNameDraft}
-              autoFocus
-              placeholder="Car name"
-              placeholderTextColor="#777"
-              style={styles.nameInput}
-              returnKeyType="done"
-              onSubmitEditing={async () => {
-                await saveName(nameDraft);
-                setIsEditingName(false);
-                Keyboard.dismiss();
-              }}
-              onBlur={async () => {
-                await saveName(nameDraft);
-                setIsEditingName(false);
-              }}
-            />
-
-            <TouchableOpacity
-              style={styles.nameSaveBtn}
-              onPress={async () => {
-                await saveName(nameDraft);
-                setIsEditingName(false);
-                Keyboard.dismiss();
-              }}
-            >
-              <Text style={styles.nameSaveText}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity
-            onPress={() => setIsEditingName(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.carName}>{car.name}</Text>
-            <Text style={styles.tapToEdit}>Tap to rename</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{modsCount}</Text>
-            <Text style={styles.statLabel}>Mods</Text>
-          </View>
-
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>
-              £{totalSpent.toLocaleString()}
-            </Text>
-            <Text style={styles.statLabel}>Spent</Text>
-          </View>
-        </View>
-
-        <View style={styles.mileageCard}>
-          <Text style={styles.sectionTitle}>Current mileage</Text>
-
-          {isEditingMileage ? (
-            <View style={styles.mileageRow}>
+        <View style={styles.card}>
+          {/* Header row: Name + edit + Mileage (tap to edit) */}
+          {isEditingName ? (
+            <View style={styles.headerRow}>
               <TextInput
-                value={mileageDraft}
-                onChangeText={setMileageDraft}
-                keyboardType="numeric"
-                placeholder="e.g. 84200"
+                value={nameDraft}
+                onChangeText={setNameDraft}
+                autoFocus
+                placeholder="Car name"
                 placeholderTextColor="#777"
-                style={styles.mileageInput}
+                style={styles.nameInputRow}
+                returnKeyType="done"
+                onSubmitEditing={async () => {
+                  await saveName(nameDraft);
+                  setIsEditingName(false);
+                  Keyboard.dismiss();
+                }}
                 onBlur={async () => {
-                  await saveMileage(mileageDraft);
-                  setIsEditingMileage(false);
+                  await saveName(nameDraft);
+                  setIsEditingName(false);
                 }}
               />
 
+              {/* Keep mileage visible while editing name */}
+              {isEditingMileage ? (
+                <TextInput
+                  value={mileageDraft}
+                  onChangeText={(t) => setMileageDraft(t.replace(/[^0-9]/g, ""))}
+                  keyboardType="numeric"
+                  placeholder={mileagePlaceholder}
+                  placeholderTextColor="#777"
+                  style={styles.mileageInput}
+                  returnKeyType="done"
+                  onSubmitEditing={async () => {
+                    await saveMileage(mileageDraft);
+                    setIsEditingMileage(false);
+                    Keyboard.dismiss();
+                  }}
+                  onBlur={async () => {
+                    await saveMileage(mileageDraft);
+                    setIsEditingMileage(false);
+                  }}
+                />
+              ) : (
+                <TouchableOpacity
+                  style={styles.mileageChip}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    setIsEditingName(false);
+                    setIsEditingMileage(true);
+                  }}
+                >
+                  <Text style={styles.mileageText}>
+                    {car.currentMileage != null
+                      ? `${car.currentMileage.toLocaleString()} ${unitLabel}`
+                      : `Set ${unitLabel}`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <View style={styles.headerRow}>
               <TouchableOpacity
-                style={styles.mileageSaveBtn}
-                onPress={async () => {
-                  await saveMileage(mileageDraft);
+                style={styles.nameTap}
+                activeOpacity={0.75}
+                onPress={() => {
                   setIsEditingMileage(false);
+                  setIsEditingName(true);
                 }}
               >
-                <Text style={styles.mileageSaveText}>Save</Text>
+                <Text style={styles.carNameRow} numberOfLines={1}>
+                  {car.name}
+                </Text>
+                <Ionicons name="pencil" size={14} color="#aaa" />
               </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              onPress={() => setIsEditingMileage(true)}
-              activeOpacity={0.75}
-              style={styles.mileageDisplay}
-            >
-              <Text style={styles.mileageValue}>
-                {car.currentMileage != null
-                  ? `${car.currentMileage.toLocaleString()} mi`
-                  : "Tap to set mileage"}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
 
-
-        <View style={styles.recentSection}>
-          <Text style={styles.sectionTitle}>Recent mods</Text>
-
-          {recentMods.length === 0 ? (
-            <Text style={styles.emptyText}>No mods yet — add your first one.</Text>
-          ) : (
-            <View style={styles.recentList}>
-              {recentMods.map((m) => (
+              {isEditingMileage ? (
+                <TextInput
+                  value={mileageDraft}
+                  onChangeText={(t) => setMileageDraft(t.replace(/[^0-9]/g, ""))}
+                  keyboardType="numeric"
+                  placeholder={mileagePlaceholder}
+                  placeholderTextColor="#777"
+                  style={styles.mileageInput}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={async () => {
+                    await saveMileage(mileageDraft);
+                    setIsEditingMileage(false);
+                    Keyboard.dismiss();
+                  }}
+                  onBlur={async () => {
+                    await saveMileage(mileageDraft);
+                    setIsEditingMileage(false);
+                  }}
+                />
+              ) : (
                 <TouchableOpacity
-                  key={m.id}
-                  style={styles.recentItem}
-                  onPress={() => router.push(`/edit-mod?id=${m.id}`)}
+                  style={styles.mileageChip}
                   activeOpacity={0.75}
+                  onPress={() => {
+                    setIsEditingName(false);
+                    setIsEditingMileage(true);
+                  }}
                 >
-                  <Text style={styles.recentName} numberOfLines={1}>
-                    {m.title}
-                  </Text>
-
-                  <Text style={styles.recentMeta}>
-                    {m.cost != null ? `£${m.cost}` : "£—"}
+                  <Text style={styles.mileageText}>
+                    {car.currentMileage != null
+                      ? `${car.currentMileage.toLocaleString()} ${unitLabel}`
+                      : `Set ${unitLabel}`}
                   </Text>
                 </TouchableOpacity>
-              ))}
-
-              {mods.length > 5 ? (
-                <TouchableOpacity
-                  style={styles.viewAllBtn}
-                  onPress={() => router.push("/timeline")}
-                >
-                  <Text style={styles.viewAllText}>View all</Text>
-                </TouchableOpacity>
-              ) : null}
+              )}
             </View>
           )}
+
+          {/* Hero (tap to add/change) */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={pickHero}
+            style={{ marginBottom: 12 }}
+          >
+            {heroUri ? (
+              <View style={styles.heroWrap}>
+                <Image source={{ uri: heroUri }} style={styles.carImage} />
+
+                {/* small replace icon */}
+                <View style={styles.heroOverlayIcon}>
+                  <Ionicons name="camera" size={16} color="#bbb" />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.heroPlaceholder}>
+                <Ionicons name="add-circle-outline" size={22} color="#bbb" />
+                <Text style={styles.heroPlaceholderText}>Add hero photo</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Mods + trophies */}
+          <View style={styles.statInlineRow}>
+            <TouchableOpacity
+              style={styles.inlineStat}
+              activeOpacity={0.75}
+              onPress={() => router.push("/timeline")}
+            >
+              <Text style={styles.statValueInline}>🔧 {installedModsCount}</Text>
+              <Text style={styles.statLabelInline}>Mods</Text>
+            </TouchableOpacity>
+
+            {trophyCount > 0 ? <Text style={styles.inlineDivider}>·</Text> : null}
+
+            <TouchableOpacity
+              style={styles.inlineStat}
+              activeOpacity={0.75}
+              onPress={() => router.push("/trophies")}
+            >
+              <Text style={styles.statValueInline}>🏆 {trophyCount}</Text>
+              <Text style={styles.statLabelInline}>Trophies</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Spec sheet */}
+          <View style={styles.specCard}>
+            <Text style={styles.specTitle}>Spec sheet</Text>
+
+            <View style={styles.specGrid}>
+              <View style={styles.specItem}>
+                <Text style={styles.specLabel}>BHP</Text>
+                <Text style={styles.specValue}>
+                  {car.specs?.bhp != null ? String(car.specs.bhp) : "—"}
+                </Text>
+              </View>
+
+              <View style={styles.specItem}>
+                <Text style={styles.specLabel}>Colour</Text>
+                <Text style={styles.specValue}>{car.specs?.colour ?? "—"}</Text>
+              </View>
+
+              <View style={styles.specItem}>
+                <Text style={styles.specLabel}>MPG</Text>
+                <Text style={styles.specValue}>
+                  {car.specs?.mpg != null ? String(car.specs.mpg) : "—"}
+                </Text>
+              </View>
+
+              <View style={styles.specItem}>
+                <Text style={styles.specLabel}>0–60</Text>
+                <Text style={styles.specValue}>
+                  {car.specs?.zeroToSixty != null
+                    ? `${car.specs.zeroToSixty}s`
+                    : "—"}
+                </Text>
+              </View>
+
+              <View style={styles.specItem}>
+                <Text style={styles.specLabel}>Drivetrain</Text>
+                <Text style={styles.specValue}>
+                  {car.specs?.drivetrain ?? "—"}
+                </Text>
+              </View>
+
+              <View style={styles.specItem}>
+                <Text style={styles.specLabel}>Transmission</Text>
+                <Text style={styles.specValue}>
+                  {car.specs?.transmission ?? "—"}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.editSpecsBtn}
+              onPress={() => router.push("/edit-specs")}
+            >
+              <Text style={styles.editSpecsText}>Edit specs</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Recent Mods */}
+          <View style={styles.recentSection}>
+            <Text style={styles.sectionTitle}>Recent mods</Text>
+
+            {/* Installed header + spent pill */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.subSectionTitle}>
+                Installed ({installedCount})
+              </Text>
+              <View style={styles.pill}>
+                <Text style={styles.pillText}>
+                  Spent · £{installedSpent.toLocaleString()}
+                </Text>
+              </View>
+            </View>
+
+            {recentInstalledMods.length === 0 ? (
+              <Text style={styles.emptyText}>No installed mods yet.</Text>
+            ) : (
+              <View style={styles.recentList}>
+                {recentInstalledMods.map((m) => (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={styles.recentItem}
+                    onPress={() => router.push(`/edit-mod?id=${m.id}`)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.recentName} numberOfLines={1}>
+                      {m.title}
+                    </Text>
+
+                    <Text style={styles.recentMeta}>
+                      {m.cost != null ? `£${m.cost}` : "£—"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+
+                {installedCount > 5 ? (
+                  <TouchableOpacity
+                    style={styles.viewAllBtn}
+                    onPress={() => router.push("/timeline")}
+                  >
+                    <Text style={styles.viewAllText}>View timeline</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
+
+            {/* Planned header + budget pill */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.subSectionTitle}>Planned ({plannedCount})</Text>
+
+              <View style={styles.pillPlanned}>
+                <Text style={styles.pillPlannedText}>
+                  Budget · £{plannedCost.toLocaleString()}
+                </Text>
+              </View>
+            </View>
+
+            {recentPlannedMods.length === 0 ? (
+              <Text style={styles.emptyText}>No planned mods yet.</Text>
+            ) : (
+              <View style={styles.recentList}>
+                {recentPlannedMods.map((m) => (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={styles.recentItem}
+                    onPress={() => router.push(`/edit-mod?id=${m.id}`)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.recentName} numberOfLines={1}>
+                      {m.title}
+                    </Text>
+
+                    <Text style={styles.recentMeta}>
+                      {m.cost != null ? `£${m.cost}` : "£—"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+
+                {plannedCount > 5 ? (
+                  <TouchableOpacity
+                    style={styles.viewAllBtn}
+                    onPress={() => router.push("/timeline")}
+                  >
+                    <Text style={styles.viewAllText}>View timeline</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
+          </View>
+
+          {/* Add Mod */}
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => router.push("/add-mod")}
+          >
+            <Text style={styles.buttonText}>+ Add Mod</Text>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push("/add-mod")}
-        >
-          <Text style={styles.buttonText}>+ Add Mod</Text>
-        </TouchableOpacity>
-
-      </View>
+      </ScrollView>
     </Screen>
   );
 }
@@ -312,12 +516,93 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
   },
+
+  scrollContent: {
+    paddingBottom: 120,
+  },
+
+  // Header row
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    gap: 12,
+  },
+  nameTap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  carNameRow: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "800",
+    flexShrink: 1,
+  },
+  nameInputRow: {
+    flex: 1,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  mileageChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+  },
+  mileageText: {
+    color: "#bbb",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  mileageInput: {
+    minWidth: 120,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 12,
+    textAlign: "right",
+  },
+
+  // Hero
   carImage: {
     width: "100%",
     height: 200,
     borderRadius: 12,
-    marginBottom: 12,
   },
+
+  heroWrap: { position: "relative" },
+
+  heroOverlayIcon: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    backgroundColor: "rgba(15,15,15,0.65)",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   heroPlaceholder: {
     width: "100%",
     height: 200,
@@ -327,123 +612,74 @@ const styles = StyleSheet.create({
     borderColor: "#2a2a2a",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
+    gap: 8,
   },
-  heroPlaceholderText: {
-    color: "#aaa",
-    fontWeight: "600",
-  },
-  heroBtn: {
-    backgroundColor: "#0f0f0f",
-    borderWidth: 1,
-    borderColor: "#2a2a2a",
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  heroBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-  },
-  carName: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  stat: {
-    alignItems: "center",
-  },
-  statValue: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  statLabel: {
-    color: "#aaa",
-    fontSize: 12,
-  },
-  button: {
-    backgroundColor: "#ff3b3b",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  nameRow: {
+  heroPlaceholderText: { color: "#aaa", fontWeight: "700" },
+
+  // Inline stats
+  statInlineRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    justifyContent: "center",
+    gap: 12,
     marginBottom: 12,
+    marginTop: 4,
   },
-  nameInput: {
-    flex: 1,
-    backgroundColor: "#0f0f0f",
-    borderWidth: 1,
-    borderColor: "#2a2a2a",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  nameSaveBtn: {
-    backgroundColor: "#0f0f0f",
-    borderWidth: 1,
-    borderColor: "#2a2a2a",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-  },
-  nameSaveText: {
-    color: "#fff",
-    fontWeight: "800",
-  },
-  tapToEdit: {
+  inlineStat: { alignItems: "center" },
+  statValueInline: { color: "#fff", fontSize: 20, fontWeight: "800" },
+  statLabelInline: {
     color: "#888",
     fontSize: 12,
     marginTop: 2,
-    marginBottom: 12,
+    fontWeight: "600",
   },
-  resetBtn: {
-    marginTop: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: "center",
+  inlineDivider: { color: "#444", fontSize: 18, marginTop: -6 },
+
+  // Spec sheet
+  sectionTitle: { color: "#fff", fontWeight: "700", marginBottom: 10 },
+  specCard: {
+    backgroundColor: "#0f0f0f",
     borderWidth: 1,
     borderColor: "#2a2a2a",
-    backgroundColor: "#0f0f0f",
-  },
-  resetText: {
-    color: "#ff3b3b",
-    fontWeight: "700",
-  },
-  recentSection: {
-    marginTop: 6,
+    borderRadius: 16,
+    padding: 14,
     marginBottom: 14,
   },
-  sectionTitle: {
-    color: "#fff",
-    fontWeight: "700",
-    marginBottom: 10,
+  specTitle: { color: "#fff", fontWeight: "900", marginBottom: 10 },
+  specGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  specItem: {
+    width: "48%",
+    backgroundColor: "#111",
+    borderWidth: 1,
+    borderColor: "#222",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
-  emptyText: {
+  specLabel: {
     color: "#888",
+    fontWeight: "800",
+    fontSize: 11,
+    marginBottom: 4,
+    textTransform: "uppercase",
   },
-  recentList: {
-    gap: 8,
+  specValue: { color: "#fff", fontWeight: "900", fontSize: 14 },
+  editSpecsBtn: {
+    marginTop: 10,
+    alignSelf: "flex-start",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
   },
+  editSpecsText: { color: "#fff", fontWeight: "900", fontSize: 12 },
+
+  // Recent
+  recentSection: { marginTop: 6, marginBottom: 14 },
+  emptyText: { color: "#888" },
+  recentList: { gap: 8 },
   recentItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -461,10 +697,8 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 10,
   },
-  recentMeta: {
-    color: "#bbb",
-    fontWeight: "700",
-  },
+  recentMeta: { color: "#bbb", fontWeight: "700" },
+
   viewAllBtn: {
     marginTop: 6,
     alignSelf: "flex-start",
@@ -475,55 +709,42 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2a2a2a",
   },
-  viewAllText: {
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: 12,
-  },
-  mileageCard: {
-    marginTop: 10,
-    marginBottom: 14,
-  },
-  mileageDisplay: {
-    backgroundColor: "#0f0f0f",
-    borderWidth: 1,
-    borderColor: "#2a2a2a",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  mileageValue: {
-    color: "#fff",
-    fontWeight: "800",
-  },
-  mileageRow: {
+  viewAllText: { color: "#fff", fontWeight: "800", fontSize: 12 },
+
+  sectionHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: 10,
+    marginBottom: 8,
+    marginTop: 8,
   },
-  mileageInput: {
-    flex: 1,
+  subSectionTitle: { color: "#bbb", fontWeight: "800" },
+  pill: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
     backgroundColor: "#0f0f0f",
     borderWidth: 1,
     borderColor: "#2a2a2a",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    color: "#fff",
-    fontWeight: "700",
   },
-  mileageSaveBtn: {
+  pillText: { color: "#fff", fontWeight: "900", fontSize: 12 },
+  pillPlanned: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
     backgroundColor: "#0f0f0f",
     borderWidth: 1,
     borderColor: "#2a2a2a",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+  },
+  pillPlannedText: { color: "#ffb020", fontWeight: "900", fontSize: 12 },
+
+  // Button
+  button: {
+    backgroundColor: "#ff3b3b",
+    paddingVertical: 14,
     borderRadius: 12,
+    alignItems: "center",
   },
-  mileageSaveText: {
-    color: "#fff",
-    fontWeight: "900",
-  },
-
-
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 });

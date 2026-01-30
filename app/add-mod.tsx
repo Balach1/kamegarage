@@ -16,7 +16,7 @@ import {
 } from "react-native";
 
 import { Screen } from "@/components/screen";
-import { addMod } from "@/lib/storage";
+import { addMod, ModStatus } from "@/lib/storage";
 
 export default function AddModScreen() {
   const [title, setTitle] = useState("");
@@ -24,6 +24,11 @@ export default function AddModScreen() {
   const [notes, setNotes] = useState("");
   const [beforeUri, setBeforeUri] = useState<string | null>(null);
   const [afterUri, setAfterUri] = useState<string | null>(null);
+
+  // ✅ NEW
+  const [status, setStatus] = useState<Extract<ModStatus, "planned" | "installed">>(
+    "installed"
+  );
 
   async function pickImage(setter: (uri: string) => void) {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -60,6 +65,7 @@ export default function AddModScreen() {
       notes: notes.trim(),
       beforeUri,
       afterUri,
+      status, // ✅ NEW
     });
 
     router.back();
@@ -68,6 +74,31 @@ export default function AddModScreen() {
   const Content = (
     <Screen>
       <Text style={styles.title}>Add Mod</Text>
+
+      {/* ✅ Status picker */}
+      <View style={styles.statusRow}>
+        <TouchableOpacity
+          onPress={() => setStatus("installed")}
+          style={[
+            styles.statusPill,
+            status === "installed" && styles.statusActive,
+          ]}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.statusText}>Installed</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setStatus("planned")}
+          style={[
+            styles.statusPill,
+            status === "planned" && styles.statusActivePlanned,
+          ]}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.statusText}>Planned</Text>
+        </TouchableOpacity>
+      </View>
 
       <TextInput
         placeholder="Mod name"
@@ -153,6 +184,33 @@ export default function AddModScreen() {
 
 const styles = StyleSheet.create({
   title: { color: "#fff", fontSize: 24, fontWeight: "700", marginBottom: 14 },
+
+  // ✅ NEW status styles
+  statusRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 12,
+  },
+  statusPill: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 999,
+    alignItems: "center",
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+  },
+  statusActive: {
+    borderColor: "#fff",
+  },
+  statusActivePlanned: {
+    borderColor: "#ffb020",
+  },
+  statusText: {
+    color: "#fff",
+    fontWeight: "800",
+  },
+
   input: {
     backgroundColor: "#1a1a1a",
     borderRadius: 12,
