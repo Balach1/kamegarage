@@ -63,6 +63,7 @@ export default function SettingsScreen() {
       await clearUnlockedTrophies();
 
       await saveCar({
+        garageTitle: "Your Garage",
         name: "My Car",
         heroImageUri: null,
         currentMileage: null,
@@ -166,26 +167,26 @@ export default function SettingsScreen() {
       <Text style={styles.sectionHeader}>Units</Text>
 
       <View style={styles.segmentWrap}>
-  <TouchableOpacity
-    style={[styles.segmentBtn, styles.segmentLeft, unit === "mi" && styles.segmentActive]}
-    onPress={() => void setMileageUnit("mi")}
-    activeOpacity={0.85}
-  >
-    <Text style={[styles.segmentText, unit === "mi" && styles.segmentTextActive]}>
-      mi
-    </Text>
-  </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.segmentBtn, styles.segmentLeft, unit === "mi" && styles.segmentActive]}
+          onPress={() => void setMileageUnit("mi")}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.segmentText, unit === "mi" && styles.segmentTextActive]}>
+            mi
+          </Text>
+        </TouchableOpacity>
 
-  <TouchableOpacity
-    style={[styles.segmentBtn, styles.segmentRight, unit === "km" && styles.segmentActive]}
-    onPress={() => void setMileageUnit("km")}
-    activeOpacity={0.85}
-  >
-    <Text style={[styles.segmentText, unit === "km" && styles.segmentTextActive]}>
-      km
-    </Text>
-  </TouchableOpacity>
-</View>
+        <TouchableOpacity
+          style={[styles.segmentBtn, styles.segmentRight, unit === "km" && styles.segmentActive]}
+          onPress={() => void setMileageUnit("km")}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.segmentText, unit === "km" && styles.segmentTextActive]}>
+            km
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <Text style={styles.sectionHeader}>Maintenance</Text>
 
@@ -234,20 +235,20 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 12 },
 
   btn: {
-  flex: 1,
-  backgroundColor: "#1a1a1a",
-  paddingVertical: 10,      // was 14
-  borderRadius: 12,
-  alignItems: "center",
-  borderWidth: 1,
-  borderColor: "#2a2a2a",
-  marginBottom: 10,         // was 12
-},
-btnText: {
-  color: "#fff",
-  fontWeight: "800",
-  fontSize: 13,             // smaller
-},
+    flex: 1,
+    backgroundColor: "#1a1a1a",
+    paddingVertical: 10,      // was 14
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    marginBottom: 10,         // was 12
+  },
+  btnText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 13,             // smaller
+  },
 
   btnActive: {
     borderColor: "#ff3b3b",
@@ -260,42 +261,42 @@ btnText: {
   danger: { borderColor: "#402" },
   dangerText: { color: "#ff3b3b" },
   segmentWrap: {
-  flexDirection: "row",
-  borderWidth: 1,
-  borderColor: "#2a2a2a",
-  borderRadius: 12,
-  backgroundColor: "#1a1a1a",
-  overflow: "hidden",
-  marginBottom: 12,
-},
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    borderRadius: 12,
+    backgroundColor: "#1a1a1a",
+    overflow: "hidden",
+    marginBottom: 12,
+  },
 
-segmentBtn: {
-  flex: 1,
-  paddingVertical: 10, // smaller than before
-  alignItems: "center",
-  justifyContent: "center",
-},
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 10, // smaller than before
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-segmentLeft: {
-  borderRightWidth: 1,
-  borderRightColor: "#2a2a2a",
-},
+  segmentLeft: {
+    borderRightWidth: 1,
+    borderRightColor: "#2a2a2a",
+  },
 
-segmentRight: {},
+  segmentRight: {},
 
-segmentActive: {
-  backgroundColor: "#0f0f0f",
-},
+  segmentActive: {
+    backgroundColor: "#0f0f0f",
+  },
 
-segmentText: {
-  color: "#bbb",
-  fontWeight: "900",
-  fontSize: 13,
-  letterSpacing: 0.3,
-},
+  segmentText: {
+    color: "#bbb",
+    fontWeight: "900",
+    fontSize: 13,
+    letterSpacing: 0.3,
+  },
 
-segmentTextActive: {
-  color: "#ff3b3b",
-},
+  segmentTextActive: {
+    color: "#ff3b3b",
+  },
 
 });
