@@ -11,7 +11,7 @@ const R = (SIZE - STROKE) / 2;
 
 // 270° gauge: from -225° to 45°
 const START_ANGLE = -225;
-const SWEEP_ANGLE = 400;
+const SWEEP_ANGLE = 270;
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -71,8 +71,8 @@ export default function RpmSplashGauge({ onFinished }: Props) {
         useNativeDriver: false,
       }),
       Animated.timing(anim, {
-        toValue: 0.18, // ~2k
-        duration: 850,
+        toValue: 1, // ✅ full sweep to the end
+        duration: 950,
         easing: Easing.inOut(Easing.cubic),
         useNativeDriver: false,
       }),
@@ -152,6 +152,9 @@ export default function RpmSplashGauge({ onFinished }: Props) {
                 R - (i % 3 === 0 ? 18 : 10),
                 angle
               );
+              const isRedline = i >= 26; // ✅ last 2 ticks (26,27) ~ the very end
+
+
 
               return (
                 <Line
@@ -160,7 +163,7 @@ export default function RpmSplashGauge({ onFinished }: Props) {
                   y1={inner.y}
                   x2={outer.x}
                   y2={outer.y}
-                  stroke={i > 21 ? "rgba(255,80,80,0.85)" : "rgba(255,255,255,0.35)"}
+                  stroke={isRedline ? "rgba(255,80,80,0.85)" : "rgba(255,255,255,0.35)"}
                   strokeWidth={i % 3 === 0 ? 2.2 : 1.4}
                   strokeLinecap="round"
                 />
