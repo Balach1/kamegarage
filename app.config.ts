@@ -1,7 +1,7 @@
 import "dotenv/config";
 import type { ExpoConfig } from "expo/config";
 
-type AppEnv = "development" | "staging" | "production";
+type AppEnv = "development" | "staging" | "prod";
 const APP_ENV = (process.env.APP_ENV as AppEnv) ?? "development";
 
 const env = {
@@ -17,7 +17,7 @@ const env = {
     iosBundleId: "com.kamegarage.staging",
     androidPackage: "com.kamegarage.staging",
   },
-  production: {
+  prod: {
     name: "Kame Garage",
     slug: "kame-garage",
     iosBundleId: "com.kamegarage",

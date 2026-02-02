@@ -14,7 +14,7 @@
     "prod": {
       "developmentClient": false,
       "distribution": "store",
-      "env": { "APP_ENV": "production" }
+      "env": { "APP_ENV": "prod" }
     },
     "e2e": {
       "developmentClient": false,

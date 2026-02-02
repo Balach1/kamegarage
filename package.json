@@ -6,7 +6,7 @@
     "start": "expo start",
     "start:dev": "cross-env APP_ENV=development expo start",
     "start:staging": "APP_ENV=staging expo start",
-    "start:prod": "APP_ENV=production expo start",
+    "start:prod": "APP_ENV=prod expo start",
     "build:dev:android": "eas build -p android --profile dev",
     "build:dev:ios": "eas build -p ios --profile dev",
     "build:staging:android": "eas build -p android --profile staging",
