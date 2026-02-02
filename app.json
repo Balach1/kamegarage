@@ -48,6 +48,14 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "APP_ENV": "production",
+      "router": {},
+      "eas": {
+        "projectId": "fab120c2-6e0a-41af-94db-eeba8bdaaa3c"
+      }
+    },
+    "owner": "bsub1x"
   }
 }

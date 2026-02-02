@@ -1,0 +1,29 @@
+{
+  "cli": { "version": ">= 10.0.0" },
+  "build": {
+    "dev": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": { "APP_ENV": "development" }
+    },
+    "staging": {
+      "developmentClient": false,
+      "distribution": "internal",
+      "env": { "APP_ENV": "staging" }
+    },
+    "prod": {
+      "developmentClient": false,
+      "distribution": "store",
+      "env": { "APP_ENV": "production" }
+    },
+    "e2e": {
+      "developmentClient": false,
+      "distribution": "internal",
+      "env": { "APP_ENV": "staging" },
+      "android": { "buildType": "apk" }
+    }
+  },
+  "submit": {
+    "prod": {}
+  }
+}

@@ -228,7 +228,7 @@ export default function GarageScreen() {
                 setIsEditingGarageTitle(true);
               }}
             >
-              <Text style={styles.title}>
+              <Text testID="garage.title" style={styles.title}>
                 {car.garageTitle ?? DEFAULT_CAR.garageTitle}
               </Text>
               <Ionicons name="pencil" size={16} color="#aaa" />
