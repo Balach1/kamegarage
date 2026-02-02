@@ -46,12 +46,10 @@ export async function getMods(): Promise<ModEntry[]> {
 
 export async function saveMods(mods: ModEntry[]): Promise<void> {
   await AsyncStorage.setItem(MODS_KEY, JSON.stringify(mods));
-  emitTrophyCheck(); // ✅ trigger global trophy check
+  emitTrophyCheck(); // ✅
 }
 
-export async function addMod(
-  entry: Omit<ModEntry, "status"> & Partial<Pick<ModEntry, "status">>
-): Promise<void> {
+export async function addMod(entry: Omit<ModEntry, "status"> & Partial<Pick<ModEntry, "status">>): Promise<void> {
   const current = await getMods();
 
   const nextEntry: ModEntry = {
@@ -63,23 +61,24 @@ export async function addMod(
   };
 
   const next = [nextEntry, ...current];
-  await saveMods(next); // ✅ emits trophy check
+  await saveMods(next); // ✅ emits
 }
 
 export async function updateMod(updated: ModEntry): Promise<void> {
   const mods = await getMods();
   const next = mods.map((m) => (m.id === updated.id ? updated : m));
-  await saveMods(next); // ✅ emits trophy check
+  await saveMods(next); // ✅ emits
 }
 
 export async function deleteMod(id: string): Promise<void> {
   const mods = await getMods();
   const next = mods.filter((m) => m.id !== id);
-  await saveMods(next); // ✅ emits trophy check
+  await saveMods(next); // ✅ emits
 }
 
 export async function clearMods(): Promise<void> {
   await AsyncStorage.removeItem(MODS_KEY);
-  emitTrophyCheck(); // ✅ trigger trophy re-check (counts drop/reset)
+  emitTrophyCheck(); // ✅
 }
+
 emitTrophyCheck();

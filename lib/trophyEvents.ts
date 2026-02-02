@@ -2,11 +2,14 @@ type Listener = () => void;
 
 const listeners = new Set<Listener>();
 
-export function onTrophyCheck(listener: Listener) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+export function emitTrophyCheck() {
+  for (const cb of listeners) cb();
 }
 
-export function emitTrophyCheck() {
-  for (const l of listeners) l();
+// ✅ returns void cleanup
+export function onTrophyCheck(cb: Listener): () => void {
+  listeners.add(cb);
+  return () => {
+    listeners.delete(cb);
+  };
 }
