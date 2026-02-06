@@ -8,6 +8,10 @@
     "scheme": "kamegarage",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "androidNavigationBar": {
+      "backgroundColor": "#0f0f0f",
+      "barStyle": "dark-content"
+    },
     "splash": {
       "backgroundColor": "#0B0B0B"
     },
@@ -16,10 +20,13 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0000008",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "expo-navigation-bar":{
+        "barStyle": "dark-content"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -50,7 +57,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "APP_ENV": "production",
+      "APP_ENV": "prod",
       "router": {},
       "eas": {
         "projectId": "fab120c2-6e0a-41af-94db-eeba8bdaaa3c"

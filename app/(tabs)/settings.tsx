@@ -168,7 +168,11 @@ export default function SettingsScreen() {
 
       <View style={styles.segmentWrap}>
         <TouchableOpacity
-          style={[styles.segmentBtn, styles.segmentLeft, unit === "mi" && styles.segmentActive]}
+          style={[
+            styles.segmentBtn,
+            styles.segmentLeft,
+            unit === "mi" && styles.segmentActive,
+          ]}
           onPress={() => void setMileageUnit("mi")}
           activeOpacity={0.85}
         >
@@ -178,7 +182,11 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.segmentBtn, styles.segmentRight, unit === "km" && styles.segmentActive]}
+          style={[
+            styles.segmentBtn,
+            styles.segmentRight,
+            unit === "km" && styles.segmentActive,
+          ]}
           onPress={() => void setMileageUnit("km")}
           activeOpacity={0.85}
         >
@@ -189,33 +197,42 @@ export default function SettingsScreen() {
       </View>
 
       <Text style={styles.sectionHeader}>Maintenance</Text>
+      <View style={styles.chipRow}>
+        <TouchableOpacity style={styles.chipBtn} onPress={clearMotDate} activeOpacity={0.85}>
+          <Text style={styles.chipText}>Clear MOT Date</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.btn} onPress={clearMotDate}>
-        <Text style={styles.btnText}>Clear MOT Date</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.btn} onPress={clearServiceHistory}>
-        <Text style={styles.btnText}>Clear Service History</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.chipBtn}
+          onPress={clearServiceHistory}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.chipText}>Clear Service History</Text>
+        </TouchableOpacity>
+      </View>
 
       <Text style={styles.sectionHeader}>Garage</Text>
+      <View style={styles.chipRow}>
+        <TouchableOpacity style={styles.chipBtn} onPress={resetModsOnly} activeOpacity={0.85}>
+          <Text style={styles.chipText}>Reset Mods Only</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.btn} onPress={resetModsOnly}>
-        <Text style={styles.btnText}>Reset Mods Only</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.chipBtn}
+          onPress={resetTrophiesOnly}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.chipText}>Reset Trophies Only</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.btn} onPress={resetTrophiesOnly}>
-        <Text style={styles.btnText}>Reset Trophies Only</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.btn, styles.danger]}
-        onPress={resetEntireGarage}
-      >
-        <Text style={[styles.btnText, styles.dangerText]}>
-          Reset Entire Garage
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.chipBtn, styles.chipDanger]}
+          onPress={resetEntireGarage}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.chipText, styles.chipDangerText]}>Reset Entire Garage</Text>
+        </TouchableOpacity>
+      </View>
     </Screen>
   );
 }
@@ -232,34 +249,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  row: { flexDirection: "row", gap: 12 },
-
-  btn: {
-    flex: 1,
-    backgroundColor: "#1a1a1a",
-    paddingVertical: 10,      // was 14
-    borderRadius: 12,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#2a2a2a",
-    marginBottom: 10,         // was 12
-  },
-  btnText: {
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: 13,             // smaller
-  },
-
-  btnActive: {
-    borderColor: "#ff3b3b",
-  },
-  btnTextActive: {
-    color: "#ff3b3b",
-    fontWeight: "900",
-  },
-
-  danger: { borderColor: "#402" },
-  dangerText: { color: "#ff3b3b" },
+  // --- Segmented control (units) ---
   segmentWrap: {
     flexDirection: "row",
     borderWidth: 1,
@@ -272,7 +262,7 @@ const styles = StyleSheet.create({
 
   segmentBtn: {
     flex: 1,
-    paddingVertical: 10, // smaller than before
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -293,10 +283,45 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontSize: 13,
     letterSpacing: 0.3,
+    textAlign: "center",
   },
 
   segmentTextActive: {
     color: "#ff3b3b",
   },
 
+  // --- Chip buttons (hug content) ---
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 12,
+  },
+
+  chipBtn: {
+    alignSelf: "flex-start", // ✅ hug content (don’t stretch)
+    backgroundColor: "#1a1a1a",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    borderRadius: 999, // ✅ pill
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  chipText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 13,
+    textAlign: "center",
+  },
+
+  chipDanger: {
+    borderColor: "#402",
+  },
+
+  chipDangerText: {
+    color: "#ff3b3b",
+  },
 });

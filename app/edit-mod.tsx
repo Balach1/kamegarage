@@ -1,6 +1,9 @@
-import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import {
+  Alert,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -9,131 +12,252 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
 
 import { Screen } from "@/components/screen";
-import { getCar, saveCar } from "@/lib/carStorage";
+import { deleteMod, getMods, ModEntry, updateMod } from "@/lib/storage";
 
-export default function EditSpecsScreen() {
-  const [bhp, setBhp] = useState("");
-  const [mpg, setMpg] = useState("");
-  const [colour, setColour] = useState<string>("");
-  const [zeroToSixty, setZeroToSixty] = useState("");
-  const [drivetrain, setDrivetrain] = useState("");
-  const [transmission, setTransmission] = useState("");
+function toNumberOrNull(v: string) {
+  const t = v.trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function pickImageAsDataUri(): Promise<string | null> {
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== "granted") return null;
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    allowsEditing: true,
+    quality: 0.7,
+    base64: true,
+  });
+
+  if (result.canceled) return null;
+
+  const asset = result.assets[0];
+  const uri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+  return uri;
+}
+
+export default function EditModScreen() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const modId = useMemo(() => (typeof id === "string" ? id : ""), [id]);
+
+  const [mod, setMod] = useState<ModEntry | null>(null);
+
+  const [title, setTitle] = useState("");
+  const [cost, setCost] = useState("");
+  const [notes, setNotes] = useState("");
+
+  // ✅ photo drafts (so user can change then Save once)
+  const [beforeUri, setBeforeUri] = useState<string | null>(null);
+  const [afterUri, setAfterUri] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       let alive = true;
 
       (async () => {
-        const car = await getCar();
+        if (!modId) return;
+
+        const mods = await getMods();
+        const found = mods.find((m) => m.id === modId) ?? null;
         if (!alive) return;
 
-        setBhp(car.specs?.bhp != null ? String(car.specs.bhp) : "");
-        setMpg(car.specs?.mpg != null ? String(car.specs.mpg) : "");
-        setZeroToSixty(
-          car.specs?.zeroToSixty != null ? String(car.specs.zeroToSixty) : ""
-        );
-        setDrivetrain(car.specs?.drivetrain ?? "");
-        setTransmission(car.specs?.transmission ?? "");
-        setColour(car.specs?.colour ?? "");
+        setMod(found);
+
+        setTitle(found?.title ?? "");
+        setCost(found?.cost != null ? String(found.cost) : "");
+        setNotes(found?.notes ?? "");
+
+        setBeforeUri(found?.beforeUri ?? null);
+        setAfterUri(found?.afterUri ?? null);
       })();
 
       return () => {
         alive = false;
       };
-    }, [])
+    }, [modId])
   );
 
-  function toNumberOrNull(v: string) {
-    const t = v.trim();
-    if (!t) return null;
-    const n = Number(t);
-    return Number.isFinite(n) ? n : null;
-  }
-
   async function save() {
-    const car = await getCar();
+    if (!mod) return;
 
-    const next = {
-      ...car,
-      specs: {
-        bhp: toNumberOrNull(bhp),
-        mpg: toNumberOrNull(mpg),
-        zeroToSixty: toNumberOrNull(zeroToSixty),
-        drivetrain: drivetrain.trim() || null,
-        transmission: transmission.trim() || null,
-        colour: colour || null,
-
-      },
+    const next: ModEntry = {
+      ...mod,
+      title: title.trim() || "Untitled mod",
+      cost: toNumberOrNull(cost),
+      notes: notes.trim(),
+      beforeUri,
+      afterUri,
     };
 
-    await saveCar(next);
+    await updateMod(next);
     router.back();
+  }
+
+  async function confirmDelete() {
+    if (!mod) return;
+
+    const doDelete = async () => {
+      await deleteMod(mod.id);
+      router.back();
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm("Delete this mod?")) await doDelete();
+      return;
+    }
+
+    Alert.alert("Delete mod", "This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => void doDelete() },
+    ]);
+  }
+
+  async function replaceBefore() {
+    const uri = await pickImageAsDataUri();
+    if (!uri) return;
+    setBeforeUri(uri);
+  }
+
+  async function replaceAfter() {
+    const uri = await pickImageAsDataUri();
+    if (!uri) return;
+    setAfterUri(uri);
+  }
+
+  function removeBefore() {
+    setBeforeUri(null);
+  }
+
+  function removeAfter() {
+    setAfterUri(null);
   }
 
   const Content = (
     <Screen>
-      <Text style={styles.title}>Edit Spec Sheet</Text>
+      <Text style={styles.title}>Edit Mod</Text>
 
-      <Text style={styles.label}>BHP</Text>
-      <TextInput
-        value={bhp}
-        onChangeText={setBhp}
-        keyboardType="numeric"
-        placeholder="e.g. 160"
-        placeholderTextColor="#777"
-        style={styles.input}
-      />
+      {!mod ? (
+        <Text style={styles.empty}>
+          {modId ? "Mod not found." : "Missing mod id."}
+        </Text>
+      ) : (
+        <>
+          {/* Photos */}
+          <Text style={styles.section}>Photos</Text>
 
-      <Text style={styles.label}>MPG</Text>
-      <TextInput
-        value={mpg}
-        onChangeText={setMpg}
-        keyboardType="numeric"
-        placeholder="e.g. 32"
-        placeholderTextColor="#777"
-        style={styles.input}
-      />
+          <View style={styles.photoRow}>
+            <View style={styles.photoCol}>
+              <Text style={styles.photoLabel}>Before</Text>
 
-      <Text style={styles.label}>0–60 (seconds)</Text>
-      <TextInput
-        value={zeroToSixty}
-        onChangeText={setZeroToSixty}
-        keyboardType="numeric"
-        placeholder="e.g. 6.8"
-        placeholderTextColor="#777"
-        style={styles.input}
-      />
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={replaceBefore}
+                style={styles.photoBox}
+              >
+                {beforeUri ? (
+                  <Image source={{ uri: beforeUri }} style={styles.photoImg} />
+                ) : (
+                  <Text style={styles.photoPlaceholder}>Add before photo</Text>
+                )}
+              </TouchableOpacity>
 
-      <Text style={styles.label}>Drivetrain</Text>
-      <TextInput
-        value={drivetrain}
-        onChangeText={setDrivetrain}
-        placeholder="e.g. RWD"
-        placeholderTextColor="#777"
-        style={styles.input}
-        autoCapitalize="characters"
-      />
+              <View style={styles.photoActions}>
+                <TouchableOpacity style={styles.smallBtn} onPress={replaceBefore}>
+                  <Text style={styles.smallBtnText}>
+                    {beforeUri ? "Replace" : "Upload"}
+                  </Text>
+                </TouchableOpacity>
 
-      <Text style={styles.label}>Transmission</Text>
-      <TextInput
-        value={transmission}
-        onChangeText={setTransmission}
-        placeholder="e.g. Manual"
-        placeholderTextColor="#777"
-        style={styles.input}
-      />
+                {beforeUri ? (
+                  <TouchableOpacity style={styles.smallBtnGhost} onPress={removeBefore}>
+                    <Text style={styles.smallBtnGhostText}>Remove</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
 
-      <TouchableOpacity style={styles.saveBtn} onPress={save}>
-        <Text style={styles.saveText}>Save Specs</Text>
-      </TouchableOpacity>
+            <View style={styles.photoCol}>
+              <Text style={styles.photoLabel}>After</Text>
 
-      <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
-        <Text style={styles.cancelText}>Cancel</Text>
-      </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={replaceAfter}
+                style={styles.photoBox}
+              >
+                {afterUri ? (
+                  <Image source={{ uri: afterUri }} style={styles.photoImg} />
+                ) : (
+                  <Text style={styles.photoPlaceholder}>Add after photo</Text>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.photoActions}>
+                <TouchableOpacity style={styles.smallBtn} onPress={replaceAfter}>
+                  <Text style={styles.smallBtnText}>
+                    {afterUri ? "Replace" : "Upload"}
+                  </Text>
+                </TouchableOpacity>
+
+                {afterUri ? (
+                  <TouchableOpacity style={styles.smallBtnGhost} onPress={removeAfter}>
+                    <Text style={styles.smallBtnGhostText}>Remove</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+          </View>
+
+          {/* Fields */}
+          <Text style={styles.label}>Title</Text>
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="e.g. Coilovers"
+            placeholderTextColor="#777"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>Cost (£)</Text>
+          <TextInput
+            value={cost}
+            onChangeText={(t) => setCost(t.replace(/[^0-9.]/g, ""))}
+            keyboardType="numeric"
+            placeholder="e.g. 650"
+            placeholderTextColor="#777"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>Notes</Text>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Anything to remember…"
+            placeholderTextColor="#777"
+            style={[styles.input, styles.notes]}
+            multiline
+          />
+
+          <TouchableOpacity style={styles.saveBtn} onPress={save}>
+            <Text style={styles.saveText}>Save</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.deleteBtn} onPress={confirmDelete}>
+            <Text style={styles.deleteText}>Delete</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </>
+      )}
     </Screen>
   );
 
@@ -143,18 +267,12 @@ export default function EditSpecsScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {Platform.OS === "web" ? (
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ flexGrow: 1 }}
-        >
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
           {Content}
         </ScrollView>
       ) : (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ flexGrow: 1 }}
-          >
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
             {Content}
           </ScrollView>
         </TouchableWithoutFeedback>
@@ -164,8 +282,53 @@ export default function EditSpecsScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { color: "#fff", fontSize: 24, fontWeight: "800", marginBottom: 14 },
-  label: { color: "#bbb", fontWeight: "800", marginBottom: 6, marginTop: 10 },
+  title: { color: "#fff", fontSize: 24, fontWeight: "800", marginBottom: 12 },
+  empty: { color: "#bbb", fontWeight: "700" },
+
+  section: { color: "#fff", fontWeight: "900", marginTop: 6, marginBottom: 10 },
+
+  photoRow: { flexDirection: "row", gap: 12, marginBottom: 6 },
+  photoCol: { flex: 1 },
+  photoLabel: { color: "#bbb", fontWeight: "800", marginBottom: 8 },
+
+  photoBox: {
+    height: 130,
+    borderRadius: 12,
+    backgroundColor: "#111",
+    borderWidth: 1,
+    borderColor: "#222",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoImg: { width: "100%", height: "100%" },
+  photoPlaceholder: { color: "#888", fontWeight: "700" },
+
+  photoActions: { flexDirection: "row", gap: 10, marginTop: 10 },
+
+  smallBtn: {
+    flex: 1,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  smallBtnText: { color: "#fff", fontWeight: "900", fontSize: 12 },
+
+  smallBtnGhost: {
+    flex: 1,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  smallBtnGhostText: { color: "#ff3b3b", fontWeight: "900", fontSize: 12 },
+
+  label: { color: "#bbb", fontWeight: "800", marginBottom: 6, marginTop: 12 },
   input: {
     backgroundColor: "#1a1a1a",
     borderRadius: 12,
@@ -174,6 +337,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#222",
   },
+  notes: { height: 110, textAlignVertical: "top" },
+
   saveBtn: {
     backgroundColor: "#ff3b3b",
     paddingVertical: 14,
@@ -182,6 +347,18 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   saveText: { color: "#fff", fontWeight: "900" },
+
+  deleteBtn: {
+    marginTop: 10,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    backgroundColor: "#0f0f0f",
+  },
+  deleteText: { color: "#ff3b3b", fontWeight: "900" },
+
   cancelBtn: {
     paddingVertical: 12,
     borderRadius: 12,
@@ -190,6 +367,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2a2a2a",
     backgroundColor: "#0f0f0f",
+    marginBottom: 30,
   },
   cancelText: { color: "#bbb", fontWeight: "800" },
 });

@@ -1,13 +1,17 @@
 import "dotenv/config";
 import type { ExpoConfig } from "expo/config";
 
-type AppEnv = "development" | "staging" | "prod";
-const APP_ENV = (process.env.APP_ENV as AppEnv) ?? "development";
+type AppEnv = "development" | "staging" | "production" | "prod";
+
+// normalize aliases
+const rawEnv = (process.env.APP_ENV ?? "development") as AppEnv;
+const APP_ENV: "development" | "staging" | "production" =
+  rawEnv === "prod" ? "production" : rawEnv;
 
 const env = {
   development: {
     name: "Kame Garage (Dev)",
-    slug: "kame-garage-dev",
+    slug: "kame-garage",
     iosBundleId: "com.kamegarage.dev",
     androidPackage: "com.kamegarage.dev",
   },
@@ -17,7 +21,7 @@ const env = {
     iosBundleId: "com.kamegarage.staging",
     androidPackage: "com.kamegarage.staging",
   },
-  prod: {
+  production: {
     name: "Kame Garage",
     slug: "kame-garage",
     iosBundleId: "com.kamegarage",
@@ -46,7 +50,6 @@ export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
     extra: {
       ...config.extra,
       APP_ENV,
-      // later: API_URL: process.env.API_URL
     },
   };
 };

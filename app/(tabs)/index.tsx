@@ -745,15 +745,16 @@ const styles = StyleSheet.create({
   specValue: { color: "#fff", fontWeight: "900", fontSize: 14 },
   editSpecsBtn: {
     marginTop: 10,
-    alignSelf: "flex-start",
+    alignSelf: "center",
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 10,
     backgroundColor: "#0f0f0f",
     borderWidth: 1,
     borderColor: "#2a2a2a",
+    alignItems: 'center'
   },
-  editSpecsText: { color: "#fff", fontWeight: "900", fontSize: 12 },
+  editSpecsText: { color: "#ff0202", fontWeight: "900", fontSize: 12 },
 
   // Recent
   recentSection: { marginTop: 6, marginBottom: 14 },
