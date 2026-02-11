@@ -40,6 +40,7 @@ export default function TabsLayout() {
         <NativeTabs.Trigger name="index">
           <Icon
             sf={{ default: "car", selected: "car.fill" }}
+            
             drawable="ic_menu_home"
           />
           <Label>Garage</Label>

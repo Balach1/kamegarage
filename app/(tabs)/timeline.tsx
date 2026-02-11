@@ -138,7 +138,7 @@ export default function TimelineScreen() {
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
                   <TouchableOpacity
-                    onPress={() => router.push(`/edit-mod?id=${m.id}`)}
+                    onPress={() => router.push(`/(modals)/edit-mod?id=${m.id}`)}
                     activeOpacity={0.75}
                     style={styles.titleWrap}
                   >

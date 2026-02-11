@@ -3,6 +3,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -227,102 +228,106 @@ export default function ServiceScreen() {
 
           {/* DateTimePicker */}
           {/* Date picker (Android = dialog, iOS = modal) */}
-{showMotPicker ? (
-  Platform.OS === "ios" ? (
-    <Modal
-      transparent
-      animationType="fade"
-      visible={showMotPicker}
-      onRequestClose={() => setShowMotPicker(false)}
-    >
-      <View style={styles.modalBackdrop}>
-        <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>Select MOT date</Text>
+          {showMotPicker ? (
+            Platform.OS === "ios" ? (
+              <Modal
+                transparent
+                animationType="fade"
+                visible={showMotPicker}
+                onRequestClose={() => setShowMotPicker(false)}
+              >
+                <View style={styles.modalBackdrop}>
+                  <View style={styles.modalCard}>
+                    <Text style={styles.modalTitle}>Select MOT date</Text>
 
-          <DateTimePicker
-            value={motDraft}
-            mode="date"
-            display="inline"
-            onChange={(_event, date) => {
-              if (date) setMotDraft(date);
-            }}
-          />
+                    <DateTimePicker
+                      value={motDraft}
+                      mode="date"
+                      display="inline"
+                      onChange={(_event, date) => {
+                        if (date) setMotDraft(date);
+                      }}
+                    />
 
-          <View style={styles.modalRow}>
-            <TouchableOpacity
-              style={[styles.modalBtn, styles.modalBtnGhost]}
-              onPress={() => setShowMotPicker(false)}
-            >
-              <Text style={styles.modalBtnGhostText}>Cancel</Text>
-            </TouchableOpacity>
+                    <View style={styles.modalRow}>
+                      <TouchableOpacity
+                        style={[styles.modalBtn, styles.modalBtnGhost]}
+                        onPress={() => setShowMotPicker(false)}
+                      >
+                        <Text style={styles.modalBtnGhostText}>Cancel</Text>
+                      </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.modalBtn}
-              onPress={() => {
-                setShowMotPicker(false);
-                void onPickMotDate(motDraft);
-              }}
-            >
-              <Text style={styles.modalBtnText}>Done</Text>
-            </TouchableOpacity>
-          </View>
+                      <TouchableOpacity
+                        style={styles.modalBtn}
+                        onPress={() => {
+                          setShowMotPicker(false);
+                          void onPickMotDate(motDraft);
+                        }}
+                      >
+                        <Text style={styles.modalBtnText}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+            ) : (
+              <DateTimePicker
+                value={car.motExpiryISO ? new Date(car.motExpiryISO) : new Date()}
+                mode="date"
+                display="default"
+                onChange={(_event, date) => {
+                  setShowMotPicker(false);
+                  if (!date) return;
+                  void onPickMotDate(date);
+                }}
+              />
+            )
+          ) : null}
+
         </View>
-      </View>
-    </Modal>
-  ) : (
-    <DateTimePicker
-      value={car.motExpiryISO ? new Date(car.motExpiryISO) : new Date()}
-      mode="date"
-      display="default"
-      onChange={(_event, date) => {
-        setShowMotPicker(false);
-        if (!date) return;
-        void onPickMotDate(date);
-      }}
-    />
-  )
-) : null}
 
-        </View>
-
+          <KeyboardAvoidingView>
         {/* Add service entry */}
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Add service entry</Text>
 
-          <TextInput
-            value={type}
-            onChangeText={setType}
-            placeholder="Type (e.g. Oil change)"
-            placeholderTextColor="#777"
-            style={styles.input}
-          />
 
-          <TextInput
-            value={mileage}
-            onChangeText={setMileage}
-            placeholder={`Mileage (optional) — ${unitLabel}`}
-            placeholderTextColor="#777"
-            keyboardType="numeric"
-            style={styles.input}
-          />
+            <TextInput
+              value={type}
+              onChangeText={setType}
+              placeholder="Type (e.g. Oil change)"
+              placeholderTextColor="#777"
+              style={styles.input}
+            />
 
-          <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Notes (optional)"
-            placeholderTextColor="#777"
-            style={[styles.input, styles.notes]}
-            multiline
-          />
+            <TextInput
+              value={mileage}
+              onChangeText={setMileage}
+              placeholder={`Mileage (optional) — ${unitLabel}`}
+              placeholderTextColor="#777"
+              keyboardType="numeric"
+              style={styles.input}
+            />
 
-          <TouchableOpacity
-            style={[styles.primaryBtn, !type.trim() && { opacity: 0.4 }]}
-            onPress={addServiceEntry}
-            disabled={!type.trim()}
-          >
-            <Text style={styles.primaryBtnText}>Add entry</Text>
-          </TouchableOpacity>
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Notes (optional)"
+              placeholderTextColor="#777"
+              style={[styles.input, styles.notes]}
+              multiline
+            />
+            <TouchableOpacity
+              style={[styles.primaryBtn, !type.trim() && { opacity: 0.4 }]}
+              onPress={addServiceEntry}
+              disabled={!type.trim()}
+            >
+
+              <Text style={styles.primaryBtnText}>Add entry</Text>
+            </TouchableOpacity>
         </View>
+          </KeyboardAvoidingView>
 
         {/* Service history */}
         <Text style={styles.sectionTitle}>History</Text>
@@ -468,51 +473,51 @@ const styles = StyleSheet.create({
   motOk: { backgroundColor: "#0f2a15", borderColor: "#2bd46a" },
 
   modalBackdrop: {
-  flex: 1,
-  backgroundColor: "rgba(0,0,0,0.6)",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 16,
-},
-modalCard: {
-  width: "100%",
-  maxWidth: 420,
-  backgroundColor: "#1a1a1a",
-  borderRadius: 16,
-  borderWidth: 1,
-  borderColor: "#222",
-  padding: 14,
-},
-modalTitle: {
-  color: "#fff",
-  fontWeight: "900",
-  fontSize: 16,
-  marginBottom: 10,
-},
-modalRow: {
-  flexDirection: "row",
-  gap: 10,
-  marginTop: 12,
-},
-modalBtn: {
-  flex: 1,
-  backgroundColor: "#0f0f0f",
-  borderWidth: 1,
-  borderColor: "#2a2a2a",
-  paddingVertical: 12,
-  borderRadius: 12,
-  alignItems: "center",
-},
-modalBtnText: {
-  color: "#fff",
-  fontWeight: "900",
-},
-modalBtnGhost: {
-  backgroundColor: "transparent",
-},
-modalBtnGhostText: {
-  color: "#bbb",
-  fontWeight: "900",
-},
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#222",
+    padding: 14,
+  },
+  modalTitle: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  modalRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+  },
+  modalBtn: {
+    flex: 1,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#2a2a2a",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalBtnText: {
+    color: "#fff",
+    fontWeight: "900",
+  },
+  modalBtnGhost: {
+    backgroundColor: "transparent",
+  },
+  modalBtnGhostText: {
+    color: "#bbb",
+    fontWeight: "900",
+  },
 
 });

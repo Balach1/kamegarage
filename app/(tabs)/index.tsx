@@ -1,9 +1,10 @@
 import { computeTrophies } from "@/lib/trophyEngine";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { router, useFocusEffect } from "expo-router";
+import { Link, router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
+  Button,
   Image,
   Keyboard,
   ScrollView,
@@ -24,9 +25,7 @@ export default function GarageScreen() {
 
   // Editing: garage title
   const [isEditingGarageTitle, setIsEditingGarageTitle] = useState(false);
-  const [garageTitleDraft, setGarageTitleDraft] = useState(
-    DEFAULT_CAR.garageTitle
-  );
+  const [garageTitleDraft, setGarageTitleDraft] = useState(DEFAULT_CAR.garageTitle);
 
   // Editing: car name
   const [isEditingName, setIsEditingName] = useState(false);
@@ -61,9 +60,7 @@ export default function GarageScreen() {
         // ✅ sync drafts from storage every focus
         setGarageTitleDraft(carData.garageTitle ?? DEFAULT_CAR.garageTitle);
         setNameDraft(carData.name ?? DEFAULT_CAR.name);
-        setMileageDraft(
-          carData.currentMileage != null ? String(carData.currentMileage) : ""
-        );
+        setMileageDraft(carData.currentMileage != null ? String(carData.currentMileage) : "");
       })();
 
       return () => {
@@ -93,6 +90,7 @@ export default function GarageScreen() {
     () => mods.filter((m) => m.status === "installed").length,
     [mods]
   );
+
   const plannedCount = useMemo(
     () => mods.filter((m) => m.status === "planned").length,
     [mods]
@@ -167,9 +165,7 @@ export default function GarageScreen() {
     if (result.canceled) return;
 
     const asset = result.assets[0];
-    const uri = asset.base64
-      ? `data:image/jpeg;base64,${asset.base64}`
-      : asset.uri;
+    const uri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
 
     const next: CarProfile = { ...car, heroImageUri: uri };
     setCar(next);
@@ -257,7 +253,6 @@ export default function GarageScreen() {
                 }}
               />
 
-              {/* Mileage visible while editing name */}
               {isEditingMileage ? (
                 <TextInput
                   value={mileageDraft}
@@ -353,11 +348,7 @@ export default function GarageScreen() {
           )}
 
           {/* Hero (tap to add/change) */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={pickHero}
-            style={{ marginBottom: 12 }}
-          >
+          <TouchableOpacity activeOpacity={0.85} onPress={pickHero} style={{ marginBottom: 12 }}>
             {heroUri ? (
               <View style={styles.heroWrap}>
                 <Image source={{ uri: heroUri }} style={styles.carImage} />
@@ -423,33 +414,26 @@ export default function GarageScreen() {
               <View style={styles.specItem}>
                 <Text style={styles.specLabel}>0–60</Text>
                 <Text style={styles.specValue}>
-                  {car.specs?.zeroToSixty != null
-                    ? `${car.specs.zeroToSixty}s`
-                    : "—"}
+                  {car.specs?.zeroToSixty != null ? `${car.specs.zeroToSixty}s` : "—"}
                 </Text>
               </View>
 
               <View style={styles.specItem}>
                 <Text style={styles.specLabel}>Drivetrain</Text>
-                <Text style={styles.specValue}>
-                  {car.specs?.drivetrain ?? "—"}
-                </Text>
+                <Text style={styles.specValue}>{car.specs?.drivetrain ?? "—"}</Text>
               </View>
 
               <View style={styles.specItem}>
                 <Text style={styles.specLabel}>Transmission</Text>
-                <Text style={styles.specValue}>
-                  {car.specs?.transmission ?? "—"}
-                </Text>
+                <Text style={styles.specValue}>{car.specs?.transmission ?? "—"}</Text>
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.editSpecsBtn}
-              onPress={() => router.push("/edit-specs")}
-            >
-              <Text style={styles.editSpecsText}>Edit specs</Text>
-            </TouchableOpacity>
+            {/* ✅ MODAL ROUTE */}
+
+            <Link href="/(modals)/edit-specs" push asChild> 
+           <Button title="Edit specs" />
+          </Link>
           </View>
 
           {/* Recent Mods */}
@@ -457,13 +441,9 @@ export default function GarageScreen() {
             <Text style={styles.sectionTitle}>Recent mods</Text>
 
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.subSectionTitle}>
-                Installed ({installedCount})
-              </Text>
+              <Text style={styles.subSectionTitle}>Installed ({installedCount})</Text>
               <View style={styles.pill}>
-                <Text style={styles.pillText}>
-                  Spent · £{installedSpent.toLocaleString()}
-                </Text>
+                <Text style={styles.pillText}>Spent · £{installedSpent.toLocaleString()}</Text>
               </View>
             </View>
 
@@ -475,24 +455,19 @@ export default function GarageScreen() {
                   <TouchableOpacity
                     key={m.id}
                     style={styles.recentItem}
-                    onPress={() => router.push(`/edit-mod?id=${m.id}`)}
+                    onPress={() => router.push(`/(modals)/edit-mod?id=${m.id}`)}
                     activeOpacity={0.75}
                   >
                     <Text style={styles.recentName} numberOfLines={1}>
                       {m.title}
                     </Text>
 
-                    <Text style={styles.recentMeta}>
-                      {m.cost != null ? `£${m.cost}` : "£—"}
-                    </Text>
+                    <Text style={styles.recentMeta}>{m.cost != null ? `£${m.cost}` : "£—"}</Text>
                   </TouchableOpacity>
                 ))}
 
                 {installedCount > 5 ? (
-                  <TouchableOpacity
-                    style={styles.viewAllBtn}
-                    onPress={() => router.push("/timeline")}
-                  >
+                  <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push("/timeline")}>
                     <Text style={styles.viewAllText}>View timeline</Text>
                   </TouchableOpacity>
                 ) : null}
@@ -503,9 +478,7 @@ export default function GarageScreen() {
               <Text style={styles.subSectionTitle}>Planned ({plannedCount})</Text>
 
               <View style={styles.pillPlanned}>
-                <Text style={styles.pillPlannedText}>
-                  Budget · £{plannedCost.toLocaleString()}
-                </Text>
+                <Text style={styles.pillPlannedText}>Budget · £{plannedCost.toLocaleString()}</Text>
               </View>
             </View>
 
@@ -517,24 +490,19 @@ export default function GarageScreen() {
                   <TouchableOpacity
                     key={m.id}
                     style={styles.recentItem}
-                    onPress={() => router.push(`/edit-mod?id=${m.id}`)}
+                    onPress={() => router.push(`/(modals)/edit-mod?id=${m.id}`)}
                     activeOpacity={0.75}
                   >
                     <Text style={styles.recentName} numberOfLines={1}>
                       {m.title}
                     </Text>
 
-                    <Text style={styles.recentMeta}>
-                      {m.cost != null ? `£${m.cost}` : "£—"}
-                    </Text>
+                    <Text style={styles.recentMeta}>{m.cost != null ? `£${m.cost}` : "£—"}</Text>
                   </TouchableOpacity>
                 ))}
 
                 {plannedCount > 5 ? (
-                  <TouchableOpacity
-                    style={styles.viewAllBtn}
-                    onPress={() => router.push("/timeline")}
-                  >
+                  <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push("/timeline")}>
                     <Text style={styles.viewAllText}>View timeline</Text>
                   </TouchableOpacity>
                 ) : null}
@@ -542,13 +510,10 @@ export default function GarageScreen() {
             )}
           </View>
 
-          {/* Add Mod */}
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => router.push("/add-mod")}
-          >
-            <Text style={styles.buttonText}>+ Add Mod</Text>
-          </TouchableOpacity>
+          {/* ✅ Add Mod -> MODAL ROUTE */}
+          <Link href="/(modals)/add-mod" push asChild> 
+           <Button title="+ Add Mods" />
+          </Link>
         </View>
       </ScrollView>
     </Screen>
@@ -556,21 +521,10 @@ export default function GarageScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "600",
-  },
-  card: {
-    backgroundColor: "#1a1a1a",
-    borderRadius: 16,
-    padding: 16,
-  },
-  scrollContent: {
-    paddingBottom: 120,
-  },
+  title: { color: "#fff", fontSize: 28, fontWeight: "600" },
+  card: { backgroundColor: "#1a1a1a", borderRadius: 16, padding: 16 },
+  scrollContent: { paddingBottom: 120 },
 
-  // Garage title edit
   pageTitleRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -598,12 +552,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 12,
   },
-  pageTitleSaveText: {
-    color: "#fff",
-    fontWeight: "900",
-  },
+  pageTitleSaveText: { color: "#fff", fontWeight: "900" },
 
-  // Header row
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -611,18 +561,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 12,
   },
-  nameTap: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  carNameRow: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "800",
-    flexShrink: 1,
-  },
+  nameTap: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
+  carNameRow: { color: "#fff", fontSize: 22, fontWeight: "800", flexShrink: 1 },
   nameInputRow: {
     flex: 1,
     backgroundColor: "#0f0f0f",
@@ -643,11 +583,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2a2a2a",
   },
-  mileageText: {
-    color: "#bbb",
-    fontWeight: "800",
-    fontSize: 12,
-  },
+  mileageText: { color: "#bbb", fontWeight: "800", fontSize: 12 },
   mileageInput: {
     minWidth: 120,
     paddingVertical: 8,
@@ -662,12 +598,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
 
-  // Hero
-  carImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 12,
-  },
+  carImage: { width: "100%", height: 200, borderRadius: 12 },
   heroWrap: { position: "relative" },
   heroOverlayIcon: {
     position: "absolute",
@@ -695,7 +626,6 @@ const styles = StyleSheet.create({
   },
   heroPlaceholderText: { color: "#aaa", fontWeight: "700" },
 
-  // Inline stats
   statInlineRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -706,15 +636,9 @@ const styles = StyleSheet.create({
   },
   inlineStat: { alignItems: "center" },
   statValueInline: { color: "#fff", fontSize: 20, fontWeight: "800" },
-  statLabelInline: {
-    color: "#888",
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: "600",
-  },
+  statLabelInline: { color: "#888", fontSize: 12, marginTop: 2, fontWeight: "600" },
   inlineDivider: { color: "#444", fontSize: 18, marginTop: -6 },
 
-  // Spec sheet
   sectionTitle: { color: "#fff", fontWeight: "700", marginBottom: 10 },
   specCard: {
     backgroundColor: "#0f0f0f",
@@ -752,11 +676,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f0f0f",
     borderWidth: 1,
     borderColor: "#2a2a2a",
-    alignItems: 'center'
+    alignItems: "center",
   },
   editSpecsText: { color: "#ff0202", fontWeight: "900", fontSize: 12 },
 
-  // Recent
   recentSection: { marginTop: 6, marginBottom: 14 },
   emptyText: { color: "#888" },
   recentList: { gap: 8 },
@@ -771,12 +694,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 12,
   },
-  recentName: {
-    color: "#fff",
-    fontWeight: "700",
-    flex: 1,
-    marginRight: 10,
-  },
+  recentName: { color: "#fff", fontWeight: "700", flex: 1, marginRight: 10 },
   recentMeta: { color: "#bbb", fontWeight: "700" },
 
   viewAllBtn: {
@@ -819,12 +737,6 @@ const styles = StyleSheet.create({
   },
   pillPlannedText: { color: "#ffb020", fontWeight: "900", fontSize: 12 },
 
-  // Button
-  button: {
-    backgroundColor: "#ff3b3b",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-  },
+  button: { backgroundColor: "#ff3b3b", paddingVertical: 14, borderRadius: 12, alignItems: "center" },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 });
